@@ -1,0 +1,23 @@
+# --- Python Artifacts ---
+__pycache__/
+*.py[cod]
+
+# --- Logs --- 
+*.log 
+logs/
+
+# --- User Configuration ---
+.vscode/
+.idea/
+
+# --- Enviroment variables ---
+.env 
+env/
+venv/
+.venv/
+ENV/
+
+# --- Tests ---
+.pytest_cache/
+.coverage
+hmtlcov/
