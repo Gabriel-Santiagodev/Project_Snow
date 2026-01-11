@@ -1,3 +1,17 @@
+# ==============================================================================
+# PROJECT SNOW - SYSTEM CONFIGURATION
+# ==============================================================================
+# Version: 1.0
+# Last Updated: January 10, 2026
+# Author: Roberto Carlos Jimenez Rodriguez
+# Purpose: Centralized configuration
+#
+# IMPORTANT RULES:
+# 1. Never hardcode values in Python code - always reference this file
+# 2. All paths are relative to project root directory
+# 3. Add comments for any non-obvious values
+# ==============================================================================
+
 hardware:
 
 # =============================================================================
@@ -8,18 +22,58 @@ hardware:
       src: 0
       name: "Left Camera"
       resolution: [640, 480]
-      enable: true
+      enabled: true
     camera2:
       src: 1
       name: "Right Camera"
       resolution: [640, 480]
-      enable: true
-    treshold:
-      value: 5000 # This value is temporal, once we have installed the "poste", we'll find the right value
-  
+      enabled: true
+
 # =============================================================================
 # AUDIO VARIABLES
 # =============================================================================
 
   audio:
     volume: 80
+    audio_files:
+      sonido_prueva0_path: "data/audio/sonido_prueva0.mp3"
+      sonido_prueva2_path: "data/audio/sonido_prueva2.mp3"
+
+# =============================================================================
+# OLED VARIABLES
+# =============================================================================
+
+  oled:
+    specs:
+      width: 256
+      height: 128
+      font_sizes: [16, 11, 10]
+    colors:
+      background: [0, 0, 0]    # Black
+      text: [180, 255, 180]    # Light green
+      error: [255, 120, 120]   # Light red
+      warning: [255, 200, 100] # Orange
+      stable: [100, 255, 100]  # Green
+    
+software:
+
+# =============================================================================
+# DETECTION VARIABLES
+# =============================================================================
+  ai_model:
+    model_path: "data/models/best.pt"
+    type: "yolov8"
+    confidence_threshold: 0.85 # Once 0.85 is reached or over come, the detection is True
+    hailo:
+      enabled: true
+  
+  detection:
+    obstruction_threshold: 5000 # Pixel change for obstruction
+    
+
+# =============================================================================
+# ERROR HANDLER VARIABLES
+# =============================================================================
+
+  error_handling:
+    buffer_max_length: 5 # Maximum number of stored errors before dropping oldest
