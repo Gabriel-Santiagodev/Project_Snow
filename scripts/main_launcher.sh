@@ -4,7 +4,7 @@
 # PROJECT SNOW - BASH FILE / MAIN LAUNCHER
 # ==============================================================================
 # Version: 1.0
-# Last Updated: January 10, 2026
+# Last Updated: January 11, 2026
 # Author: Roberto Carlos Jimenez Rodriguez
 # Purpose: Tell to the Raspberry Pi how to start working
 # ==============================================================================
