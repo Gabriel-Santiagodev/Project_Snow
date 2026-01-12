@@ -1,28 +1,55 @@
+# ==============================================================================
+# PROJECT SNOW - SYSTEM CONFIGURATION
+# ==============================================================================
+# Version: 1.1 (Fixed for Python dictConfig)
+# Last Updated: January 11, 2026
+# Author: Ruben Gabriel Aguilar Santiago
+# Purpose: Centralized logging configuration
+#
+# IMPORTANT RULES:
+# 1. Never hardcode logging values in Python code - always reference this file
+# 2. All paths are relative to project root directory
+# 3. Add comments for any non-obvious values
+# ==============================================================================
+
+# =============================================================================
+# NECESSARY REQUIREMENTS
+# =============================================================================
+
 version: 1
 disable_existing_loggers: False
 
-formatters: 
-    simple: 
-        format: "%(levelname)s - %(name)s - %(message)s"
-    detailed: 
-        format: "%(asctime)s - %(levelname)s - %(name)s - %(thread)d - %(funcName)s - %(lineno)d - %(message)s"
-        datefmt: "%Y-%m-%dT%H:%M:%S%z" #ISO 8601
+# =============================================================================
+# FORMATTERS
+# =============================================================================
+formatters:
+  simple:
+    format: "%(levelname)s - %(name)s - %(message)s"
+  detailed:
+    format: "%(asctime)s - %(levelname)s - %(name)s - %(thread)d - %(funcName)s - %(lineno)d - %(message)s"
+    datefmt: "%Y-%m-%dT%H:%M:%S%z"  # ISO 8601 format
 
+# =============================================================================
+# HANDLERS
+# =============================================================================
 handlers:
-    console:
-        class: logging.StreamHandler
-        formatter: simple
-        level: INFO
-        stream: ext://sys.stdout
-    file: 
-        class: logging.handlers.RotatingFileHandler
-        level: DEBUG
-        formatter: detailed
-        filename: logs/app.log 
-        maxBytes: 1048576
-        backupCount: 3
-        encoding: utf-8
-
-root: 
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    level: INFO
+    stream: ext://sys.stdout
+  file:
+    class: logging.handlers.RotatingFileHandler
     level: DEBUG
-    handlers: [console, file]
+    formatter: detailed
+    filename: logs/app.log   # Log file path (relative to project root)
+    maxBytes: 1048576        # 1 MB before rotation
+    backupCount: 3           # Keep 3 backup files
+    encoding: utf-8
+
+# =============================================================================
+# ROOT LOGGER
+# =============================================================================
+root:
+  level: DEBUG
+  handlers: [console, file]
