@@ -1,7 +1,7 @@
 {
     "system_info": {
-        "first_install_date": "2026-01-11",
-        "last_boot_timestamp": "N/A",
+        "first_install_date": "2026-01-11T00:00:00Z",
+        "last_boot_timestamp": null,
         "total_uptime_hours": 0
     },
     "resilience": {
@@ -15,5 +15,10 @@
     "scientific_metrics": {
         "total_people_assisted": 0,
         "total_system_restarts": 0
+    },
+    "metadata": {
+        "version": "1.1",
+        "lastUpdated": "2026-01-11T23:05:00Z",
+        "author": "Ruben Gabriel Aguilar Santiago"
     }
 }
