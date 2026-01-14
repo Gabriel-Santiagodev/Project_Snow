@@ -4,7 +4,7 @@
 # Version: 1.0
 # Last Updated: January 11, 2026
 # Author: Roberto Carlos Jimenez Rodriguez
-# Purpose: Managing of Volatie and Persistant information
+# Purpose: Managing of Volatile and Persistent information
 # ==============================================================================
 
 import threading
@@ -19,11 +19,11 @@ class SharedState:
     This file is the storage place for all the variables in this project
 
     Here are managed two kinds of information:
-    - Volatile information. Information that is not neccesary to keep, such as the last detection 
-    - Persistant information. Information we must keep every reboot, such as 'maintenance_mode' = True
+    - Volatile information. Information that is not necesary to keep, such as the last detection 
+    - Persistent information. Information we must keep every reboot, such as 'maintenance_mode' = True
     """
 
-    def __init__(self, json_path="config/system.state.json"):
+    def __init__(self, json_path="config/system_state.json"):
 
         # Lock to prevent errors
         self._lock = threading.Lock()
@@ -106,7 +106,7 @@ class SharedState:
     def _save_to_disk(self):
         """ Save persistent data to JSON file. """
         # Extract only persistent keys
-        self.persistent_data = {
+        persistent_data = {
             key: self._data[key] 
             for key in self._PERSISTENT_KEYS 
             if key in self._data
@@ -114,7 +114,9 @@ class SharedState:
 
         # Write to file
         with open(self._json_path, 'w') as f:
-            json.dump(self.persistent_data, f, indent=2)
+            json.dump(persistent_data, f, indent=2)
+        
+        logger.info("Saved state to disk")
 
     def set_persistent(self, key, value):
         """ Set a value in RAM and save to disk. """
