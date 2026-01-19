@@ -29,6 +29,8 @@ class BaseService(ABC, threading.Thread):
         Logger instance scoped to the service class.
     consecutive_errors : int
         Counter tracking consecutive errors for health monitoring.
+    name : str
+        Name of the class
     """
 
     def __init__(self, shared_state, config):
@@ -38,6 +40,7 @@ class BaseService(ABC, threading.Thread):
         self._stop_event = threading.Event()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.consecutive_errors = 0
+        self.name = self.__class__.__name__
 
     def report_error(self):
         """
