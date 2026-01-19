@@ -82,8 +82,8 @@ software:
     
 
 # =============================================================================
-# ERROR HANDLER VARIABLES
+# SYSTEM VARIABLES
 # =============================================================================
 
-  error_handling:
-    buffer_max_length: 5 # Maximum number of stored errors before dropping oldest
+system:
+    max_thread_restarts: 3 

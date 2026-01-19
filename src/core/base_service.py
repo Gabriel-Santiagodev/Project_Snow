@@ -1,3 +1,12 @@
+# ==============================================================================
+# PROJECT SNOW - BASE SERVICE
+# ==============================================================================
+# Version: 1.0
+# Last Updated: January 2026
+# Author: Ruben Gabriel Aguilar Santiago
+# Purpose: Template for all threaded services (Camera, Audio, etc.)
+# ==============================================================================
+
 import threading
 import logging
 from abc import ABC, abstractmethod
@@ -7,93 +16,91 @@ class BaseService(ABC, threading.Thread):
     Abstract base class for threaded services.
 
     This class provides a standardized template for creating services
-    that run in their own thread. Subclasses must implement the `_main_loop`
-    method, which defines the core logic of the service.
+    that run in their own thread. It handles the lifecycle (start/stop),
+    error catching, and health reporting for the Watchdog.
 
     Parameters
     ----------
-    shared_state : Any
-        A shared object or dictionary used to exchange state between services.
-    config : Any
-        Configuration file containing service-specific parameters.
-
-    Attributes
-    ----------
-    shared_state : Any
-        Reference to the shared state object.
-    config : Any
-        Reference to the configuration object.
-    _stop_event : threading.Event
-        Event used to signal the thread to stop execution.
-    logger : logging.Logger
-        Logger instance scoped to the service class.
-    consecutive_errors : int
-        Counter tracking consecutive errors for health monitoring.
+    shared_state : SharedState
+        The central thread-safe data store for inter-service communication.
+    config : dict
+        Configuration dictionary containing service-specific parameters.
     """
 
     def __init__(self, shared_state, config):
+        # Initialize the parent Thread class (Crucial for parallelism)
         super().__init__()
+        
+        # Dependency Injection: Receive tools from the Manager
         self.shared_state = shared_state
         self.config = config
+        
+        # Thread Control: Safe flag to stop execution without killing the process
         self._stop_event = threading.Event()
+        
+        # Observability: Dedicated logger for this specific service
         self.logger = logging.getLogger(self.__class__.__name__)
+        
+        # Health Monitoring: Counters for the Watchdog Logic
         self.consecutive_errors = 0
+        self.name = self.__class__.__name__
 
     def report_error(self):
         """
-        Increment the consecutive error counter.
-
-        This method should be called whenever the service encounters
-        an error during execution. It allows monitoring systems to
-        detect repeated failures.
+        Signals that the service encountered a logical error.
+        
+        Usage: Call this inside _main_loop when something goes wrong (e.g., empty frame).
+        Effect: Increases the 'sickness' level for the Watchdog.
         """
         self.consecutive_errors += 1
 
     def report_health(self):
         """
-        Reset the consecutive error counter.
-
-        This method should be called when the service successfully
-        completes an operation, indicating that it is healthy again.
+        Signals that the service is working correctly.
+        
+        Usage: Call this at the end of a successful loop iteration.
+        Effect: Resets the 'sickness' level to 0 (Healthy).
         """
         self.consecutive_errors = 0
 
     def stop(self):
         """
-        Signal the service to stop execution.
-
-        This method sets the internal stop event, which can be checked
-        inside the `_main_loop` implementation to gracefully terminate
-        the service.
+        Thread-safe method to stop the service.
+        
+        This does NOT kill the thread immediately. It sets a flag that 
+        the _main_loop must check to exit gracefully.
         """
-        self.logger.info("Stopping service...")
+        self.logger.info("Stopping service signal received...")
         self._stop_event.set()
 
     def run(self):
         """
-        Start the service thread and execute its main loop.
-
-        This method is automatically invoked when calling `start()`
-        on the thread. It initializes the service, runs the main loop,
-        and ensures proper logging of errors and shutdown.
+        The Main Entry Point for the Thread.
+        
+        WARNING: Do not override this method in child classes.
+        This wrapper provides the 'Safety Net' (try-except) to prevent
+        a single service crash from bringing down the entire robot.
         """
-        self.logger.info("Initializing service...")
+        self.logger.info("Initializing service thread...")
 
         try:
+            # Execute the child's specific logic
             self._main_loop()
         except Exception as e:
-            self.logger.critical(f"Unhandled error: {e}", exc_info=True)
+            # CATCH-ALL: If the child code crashes, we catch it here.
+            # This allows the Manager to see the thread is dead and revive it.
+            self.logger.critical(f"UNHANDLED CRASH in {self.name}: {e}", exc_info=True)
         finally:
-            self.logger.info("Service finished.")
+            self.logger.info("Service thread finished.")
 
     @abstractmethod
     def _main_loop(self):
         """
-        Abstract method defining the service's main loop.
+        Abstract method where the specific business logic lives.
 
-        Subclasses must implement this method with the core logic
-        of the service. The loop should periodically check
-        `self._stop_event.is_set()` to determine whether to exit
-        gracefully.
+        Rules for Implementation:
+        1. Must use a loop: `while not self._stop_event.is_set():`
+        2. Must call `self.report_health()` on success.
+        3. Must call `self.report_error()` on failure.
         """
         pass
