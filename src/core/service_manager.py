@@ -1,37 +1,67 @@
-import threading
+# ==============================================================================
+# PROJECT SNOW - SERVICE MANAGER
+# ==============================================================================
+# Version: 1.0
+# Last Updated: January 2026
+# Author: Ruben Gabriel Aguilar Santiago
+# Purpose: Orchestrator for all robotic micro-services (Start, Monitor, Heal)
+# ==============================================================================
+
 import logging
 import time
 import json
 import importlib
 import os
-# Asegúrate que el import coincida con el nombre del archivo de tu compañero (shared_state.py)
-from src.core.shared_satate import SharedState #Corregir esto
+from src.core.shared_state import SharedState
 
 class ServiceManager:
     """
-    El Gran Orquestador.
-    Responsable de nacer, vigilar, matar y revivir a todos los servicios del robot.
+    The Grand Orchestrator of the System.
+    
+    This class implements the 'Manager' design pattern. It is responsible for:
+    1. Loading services dynamically from a JSON configuration.
+    2. Injecting dependencies (Config & SharedState) into those services.
+    3. Monitoring thread health (Watchdog).
+    4. Executing recovery protocols (Soft Restart vs Hard Reboot).
+
+    Parameters
+    ----------
+    config : dict
+        The global configuration dictionary loaded from 'settings.yaml'.
+
+    Attributes
+    ----------
+    shared_state : SharedState
+        The single source of truth for thread-safe data exchange.
+    services : list
+        A list of active service objects (Threads).
+    restart_counts : dict
+        A scorecard tracking how many times each service has been restarted.
     """
 
     def __init__(self, config):
-        """
-        Inicializa el Manager con la configuración global.
-        """
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config = config 
         
-        # Aquí nace el shared_state, es la unica instancia en todo el programa
-        # Se pasará por referencia a todos los servicios hijos.
-        # CORRECCIÓN: self.shared_state (no share_state)
+        # Initialize the Central Nervous System (Shared State)
+        # This is the ONLY instance in the entire program.
         self.shared_state = SharedState()
         
         self.services = []
-        self.restart_counts = {} # Diccionario para llevar el conteo de reinicios por servicio
+        
+        # Tracks service stability history
+        # Format: {'CameraService': 0, 'AudioService': 2}
+        self.restart_counts = {} 
     
     def _load_services_list(self):
         """
-        Lee el JSON que define qué servicios activar.
-        Retorna una lista vacía [] si falla para evitar crashes.
+        Read the list of active services from JSON.
+        
+        Returns
+        -------
+        list
+            A list of strings representing class paths (e.g., "src.hardware.camera...").
+            Returns an empty list [] on failure to prevent system crash.
         """
         try:
             with open("config/services_list.json", 'r') as f:
@@ -42,8 +72,16 @@ class ServiceManager:
     
     def start_all_services(self):
         """
-        Carga dinámica (Inyección de Dependencias).
-        Instancia los servicios y les entrega la Config y el SharedState.
+        Initialize and start all services defined in the configuration.
+
+        This method uses Python Reflection to dynamically import and instantiate
+        classes based on string names. This allows adding new hardware without
+        modifying the Manager's code.
+
+        Notes
+        -----
+        Dependency Injection happens here: We pass 'self.shared_state' and 
+        'self.config' to every new service.
         """
         self.logger.info("Initializing all services...")
 
@@ -51,110 +89,127 @@ class ServiceManager:
 
         for class_path in service_class_paths:
             try:
-                # Ejemplo: "src.services.camera_service.CameraService"
-                # rsplit separa desde la derecha (el último punto)
+                # Example: "src.hardware.camera_service.CameraService"
+                # rsplit splits from the right to separate Module from Class
                 module_name, class_name = class_path.rsplit(".", 1)
                 
-                module = importlib.import_module(module_name) # Importamos el archivo
-                service_class = getattr(module, class_name)   # Obtenemos la Clase
+                # Dynamic Import (Reflection)
+                module = importlib.import_module(module_name)
+                service_class = getattr(module, class_name)
                 
-                # INYECCIÓN DE DEPENDENCIAS:
-                # Aquí es donde config y shared_state entran en acción.
+                # Instantiation & Injection
                 service = service_class(self.shared_state, self.config)
                 
-                service.start() # Llama a run(), que llama a _main_loop() en un hilo paralelo
+                # Start the Thread (calls run() -> _main_loop())
+                service.start()
                 
-                self.services.append(service) # Lo agregamos a la nómina
-                self.restart_counts[service.name] = 0 # Iniciamos su historial limpio
+                # Add to payroll
+                self.services.append(service)
+                self.restart_counts[service.name] = 0
                 
                 self.logger.info(f"SERVICE INITIALIZED: {service.name}")
             except Exception as e:
+                # If one service fails, we log it but continue starting others
                 self.logger.critical(f"SERVICE INITIALIZING ERROR {class_path}: {e}", exc_info=True)
     
     def check_health(self):
         """
-        WATCHDOG (Perro Guardián).
-        Implementa la lógica de recuperación en 3 capas.
+        Main Watchdog Routine (The Doctor).
+        
+        This method checks if any service is 'Dead' (crashed) or 'Sick' (logical errors).
+        It implements a Tiered Recovery Strategy:
+        - Tier 1: Soft Restart (Restart only the thread).
+        - Tier 2: Hard Reboot (Restart the entire Raspberry Pi).
+
+        Notes
+        -----
+        This should be called periodically from the main loop (e.g., every 5s).
         """
-        # Leemos configuración o usamos 3 por defecto
+        # Read limit from config or default to 3
         max_thread_restarts = self.config.get('system', {}).get('max_thread_restarts', 3)
 
         for service in self.services:
-            # --- CAPA 1: Diagnóstico ---
+            # --- TIER 1: Diagnosis ---
             is_dead = not service.is_alive()
             is_sick = service.consecutive_errors >= 3
 
-            # Solo entramos aquí si hay problemas. Si está sano, el bucle continúa.
+            # Only intervene if there is a problem
             if is_dead or is_sick:
                 reason = "DEAD" if is_dead else f"SICK ({service.consecutive_errors} errors)"
                 self.logger.warning(f"WATCHDOG: The service {service.name} is {reason}.")
                 
-                # Aumentamos su historial de fallos
+                # Increment historical restart count
                 self.restart_counts[service.name] += 1
                 current_restarts = self.restart_counts[service.name]
 
-                # --- CAPA 2 y 3: Decisión de Tratamiento ---
+                # --- TIER 2: Treatment Decision ---
                 if current_restarts > max_thread_restarts:
-                    # CASO GRAVE: La aspirina no funcionó. Reinicio total.
+                    # CASE CRITICAL: 'Aspirin' didn't work. System is unstable.
                     self.logger.critical(f"{service.name} has failed {current_restarts} times. STARTING SYSTEM REBOOT.")
                     
-                    # Guardamos el error en el Disco Duro (JSON)
-                    # CORRECCIÓN: get_resilience (spelling)
+                    # Persist the error count to disk (JSON) so we remember after reboot
                     current_system_reboots = self.shared_state.get_resilience("reboot_error_count") or 0
                     self.shared_state.set_resilience("reboot_error_count", current_system_reboots + 1)
                     
                     self._perform_system_reboot()
-                    return # Salimos del método, ya no importa nada más
+                    return # Exit immediately to allow reboot
                 else:
-                    # CASO LEVE: Reinicio suave del hilo
+                    # CASE MILD: Apply 'Aspirin' (Restart the thread)
                     self.logger.info(f"Applying soft restart ({current_restarts}/{max_thread_restarts})...")
                     self._restart_service(service)
 
     def _restart_service(self, old_service):
         """
-        Mata un hilo viejo y crea uno nuevo idéntico.
+        Soft Restart: Replaces a broken thread with a fresh one.
+        
+        Parameters
+        ----------
+        old_service : BaseService
+            The instance of the service that has failed or is sick.
         """
-        # 1. Asegurar muerte del anterior
+        # 1. Euthanasia: Ensure the old thread is stopped
         if old_service.is_alive():
             old_service.stop()
             old_service.join(timeout=2.0)
 
-        # 2. Sacarlo de la lista
+        # 2. Cleanup: Remove from active list
         if old_service in self.services:
             self.services.remove(old_service)
 
-        # 3. Resurrección (Reflection)
-        # type(old_service) obtiene la clase (ej: CameraService) automáticamente
+        # 3. Resurrection: Create new instance using the same class
+        # type(old_service) gives us the class (e.g. CameraService) without importing it
         new_service = type(old_service)(self.shared_state, self.config)
         new_service.start() 
 
-        # 4. Actualizar lista
+        # 4. Re-hiring: Add to active list
         self.services.append(new_service)
-        # NOTA: No reiniciamos self.restart_counts a 0 aquí, 
-        # porque queremos recordar que ya falló una vez.
+        
+        # Note: We do NOT reset self.restart_counts here. We want to remember the failure.
         self.logger.info(f"Service {new_service.name} rebooted successfully.")
 
     def _perform_system_reboot(self):
         """
-        Reinicia la Raspberry Pi.
+        Hard Reboot: Triggers a hardware restart via OS command.
+        Used as a last resort when threads cannot recover.
         """
         self.logger.critical("INITIALIZING EMERGENCY SYSTEM REBOOT!!!")
         self.stop_all() 
         time.sleep(1)
-        # Comando Linux
+        # Linux Command to restart
         os.system("sudo reboot")
     
     def stop_all(self):
         """
-        Detiene todos los servicios limpiamente.
+        Graceful Shutdown Protocol.
+        Signals all threads to stop and waits for them to close files/connections.
         """
         self.logger.info("Stopping all services...")
 
-        # Paso 1: Señal de alto
+        # Step 1: Raise the Stop Flag
         for service in self.services:
             service.stop()
         
-        # Paso 2: Esperar a que cierren
+        # Step 2: Wait for closure (Join)
         for service in self.services:
             service.join()
     
