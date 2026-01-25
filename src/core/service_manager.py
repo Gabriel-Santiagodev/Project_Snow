@@ -148,9 +148,13 @@ class ServiceManager:
                     self.logger.critical(f"{service.name} has failed {current_restarts} times. STARTING SYSTEM REBOOT.")
                     
                     # Persist the error count to disk (JSON) so we remember after reboot
-                    current_system_reboots = self.shared_state.get_resilience("reboot_error_count") or 0
-                    self.shared_state.set_resilience("reboot_error_count", current_system_reboots + 1)
-                    
+                    try:
+                        current_system_reboots = self.shared_state.get_resilience("reboot_error_count") or 0
+                        self.shared_state.set_resilience("reboot_error_count", current_system_reboots + 1)
+                        total_restarts = self.shared_state.get_metric("total_system_restarts") or 0
+                        self.shared_state.set_metric("total_system_restarts", total_restarts + 1)
+                    except:
+                        pass        
                     self._perform_system_reboot()
                     return # Exit immediately to allow reboot
                 else:

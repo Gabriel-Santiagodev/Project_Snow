@@ -6,8 +6,7 @@
     },
     "resilience": {
         "maintenance_mode_active": false,
-        "reboot_error_count": 0,
-        "emergency_lockdown": false
+        "reboot_error_count": 0
     },
     "persistence_settings": {
         "eco_mode_active": false
@@ -18,7 +17,7 @@
     },
     "metadata": {
         "version": "1.1",
-        "lastUpdated": "2026-01-11T23:05:00Z",
+        "lastUpdated": "2026-01-24T00:00:00Z",
         "author": "Ruben Gabriel Aguilar Santiago"
     }
 }

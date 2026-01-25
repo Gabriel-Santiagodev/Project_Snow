@@ -41,27 +41,11 @@ hardware:
   audio:
     volume: 80
     audio_files:
-      sonido_prueva0_path: "data/audio/sonido_prueva0.mp3"
-      sonido_prueva2_path: "data/audio/sonido_prueva2.mp3"
+      sonido_prueva0_path: "data/audio/sonido_prueba0.mp3"
+      sonido_prueva2_path: "data/audio/sonido_prueba2.mp3"
 
 # =============================================================================
-# OLED VARIABLES
-# =============================================================================
-
-  oled:
-    specs:
-      width: 256
-      height: 128
-      font_sizes: [16, 11, 10]
-    colors:
-      background: [0, 0, 0]    # Black
-      text: [180, 255, 180]    # Light green
-      error: [255, 120, 120]   # Light red
-      warning: [255, 200, 100] # Orange
-      stable: [100, 255, 100]  # Green
-    
-# =============================================================================
-# PINS VARIABLES
+# GPIO PINS VARIABLES (BCM Numbering)
 # =============================================================================
   pins:
     emergency_light: 17
@@ -74,7 +58,7 @@ hardware:
 software:
 
 # =============================================================================
-# DETECTION VARIABLES
+# AI & DETECTION VARIABLES
 # =============================================================================
   ai_model:
     model_path: "data/models/best.pt"
