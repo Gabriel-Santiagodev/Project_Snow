@@ -1,8 +1,8 @@
 # ==============================================================================
 # PROJECT SNOW - SHARED STATE
 # ==============================================================================
-# Version: 2.0
-# Last Updated: February 3, 2026
+# Version: 2.1
+# Last Updated: February 7, 2026
 # Author: Roberto Carlos Jimenez Rodriguez
 # Purpose: Managing of Volatile and Persistent information
 # ==============================================================================
@@ -80,10 +80,10 @@ class SharedState:
 
     def _load_from_disk(self):
         """
-        This function does 3 things:
-        - Opens and reads the JSON file
-        - If the file doesn't exist or is corrupted, use defaults
-        - Copy values into self._persistent_data
+            This function does 3 things:
+            - Opens and reads the JSON file
+            - If the file doesn't exist or is corrupted, use defaults
+            - Copy values into self._persistent_data
         """
 
         # Try to open the JSON file
@@ -102,3 +102,89 @@ class SharedState:
         except json.JSONDecodeError:
             logger.error("Corrupted state file, using defaults")
             self._persistent_data = self._get_default_persistent_state()
+        
+    def _save_to_disk(self) -> None:
+        """ Save entire persistent data to JSON file. """
+        try:
+            with open(self._json_path, "w") as f:
+                json.dump(self._persistent_data, f, indent = 4)
+            logger.info("Saved state to disk")
+        except Exception as e:
+            logger.error(f"Failed to save state to disk: {e}")   
+
+# ===========================================================
+# Functions to make shorter the process of saving and loading
+# ===========================================================
+
+    def get_resilience(self, key: str) -> any:
+        """
+        Obtain a value from resilience
+
+        Args:
+            key (str): This is the resilience key to retrieve
+        Returns:
+            The current value in the key
+        """
+        with self._lock:
+            return self._persistent_data["resilience"].get(key)
+    
+    def set_resilience(self, key: str, value: any) -> None:
+        """
+        Update a value from resilience
+
+        Args:
+            key (str): This is the resilience key to update
+            value (any): This is the value to store
+        """
+        with self._lock:
+            self._persistent_data["resilience"][key] = value
+            self._save_to_disk()
+
+    def get_metric(self, key: str) -> any:
+        """
+        Obtain a value from scientific_metrics
+
+        Args:
+            key (str): This is the scientific_metrics key to retrieve
+        Returns:
+            The current value in the key
+        """
+
+        with self._lock:
+            return self._persistent_data["scientific_metrics"].get(key)
+        
+    def set_metric(self, key: str, value: any) -> None:
+        """
+        Update a value from scientific_metrics
+
+        Args:
+            key (str): This is the scientific_metrics key to update
+            value (any): This is the value to store
+        """
+        with self._lock:
+            self._persistent_data["scientific_metrics"][key] = value
+            self._save_to_disk()
+    
+    def get_volatile(self, key: str) -> any:
+        """
+        Obtain a value from volatile data
+
+        Args:
+            key (str): This is the volatile data key to retrieve
+        Returns:
+            The current value in the key
+        """
+
+        with self._lock:   
+            return self._volatile_data.get(key)
+    
+    def set_volatile(self, key: str, value: any) -> None:
+        """
+        Update a value from volatile data
+
+        Args:
+            key (str): This is the volatile data key to update
+            value (any): This is the value to store
+        """
+        with self._lock:
+            self._volatile_data[key] = value
