@@ -31,7 +31,7 @@ echo "Activating Virtual Environment"
 source venv/bin/activate
 
 # Hailo paths. 
-export HAILO_PATH="/usr/lib/hailo"
+export HAILO_PATH="/usr/lib/hailo" # TODO: Verify this path on the physical Raspberry Pi
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HAILO_PATH
 echo "Hailo environment configured"
 

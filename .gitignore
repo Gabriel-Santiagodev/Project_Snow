@@ -29,6 +29,11 @@ ENV/
 htmlcov/
 
 # --- Files ---
-# Keep folder structure but ignore file contents (models, audio, etc).
-data/**/*
-!data/**/.gitkeep
+# Keep folder structure and READMEs, but ignore large binaries
+data/**/*.pt      # AI model files
+data/**/*.pth     # PyTorch model files
+data/**/*.onnx    # ONNX model files
+data/**/*.mp3     # Audio files
+data/**/*.wav     # Audio files
+data/**/*.mp4     # Video files
+data/**/*.avi     # Video files

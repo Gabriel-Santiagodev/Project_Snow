@@ -48,8 +48,9 @@ hardware:
 # GPIO PINS VARIABLES (BCM Numbering)
 # =============================================================================
   pins:
-    emergency_light: 17
-    reset_button: 27
+    # Future task: Verify buttons are 3.3V compatible before connecting to GPIO
+    emergency_light: 17 # BCM numbering (Physical pin 11)
+    reset_button: 27 # BCM numbering (Physical pin 13)
 
 # =============================================================================
 # SOFTWARE
