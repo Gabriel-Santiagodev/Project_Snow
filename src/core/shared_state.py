@@ -1,57 +1,46 @@
 # ==============================================================================
 # PROJECT SNOW - SHARED STATE
 # ==============================================================================
-# Version: 2.1
-# Last Updated: February 7, 2026
-# Author: Roberto Carlos Jimenez Rodriguez
-# Purpose: Managing of Volatile and Persistent information
+# Version: 2.2 
+# Last Updated: February 8, 2026
+# Author: Roberto Carlos Jimenez Rodriguez 
+# Purpose: Thread-safe Management of Volatile and Persistent information
 # ==============================================================================
 
 import threading
 import json
 import logging
-from pathlib import Path
 import queue 
+from pathlib import Path
+from typing import Any, Dict, Optional 
 
 logger = logging.getLogger(__name__)
 
 class SharedState:
     """
-    This file is the storage place for all the variables in this project
-
-    Here are managed two kinds of information:
-    - Volatile information. Information that is not necessary to keep, such as the last detection 
-    - Persistent information. Information we must keep every reboot, such as 'maintenance_mode' = True
+    Centralized Memory Bank for Project Snow.
+    Manages thread-safe access to Volatile (RAM) and Persistent (SSD) data.
     """
 
-    def __init__(self, json_path="config/system_state.json"):
-
-        # Lock to prevent errors
+    def __init__(self, json_path: str = "config/system_state.json"):
         self._lock = threading.Lock()
-
-        # JSON path
         self._json_path = Path(json_path)
+        
+        self._persistent_data: Dict[str, Any] = {}
+        self._volatile_data: Dict[str, Any] = {}
 
-       # Start with persistent and volatile data empty
-        self._persistent_data = {}
-
-        self._volatile_data = {}
-
-        # Load from disk at startup
         self._load_from_disk()
-
-        # Initialize volatile keys with defaults
         self._initialize_volatile_data()
     
-    def _get_default_persistent_state(self):
-        """ This function returns the base values for the persistent data of the system """
+    def _get_default_persistent_state(self) -> Dict[str, Any]:
+        """ Returns the factory-default state structure. """
         return {
             "system_info": {
                 "first_install_date": "2026-01-11T00:00:00Z",
                 "last_boot_timestamp": None,
                 "total_uptime_hours": 0
             },
-            "resilience" : {
+            "resilience": {
                 "maintenance_mode_active": False,
                 "reboot_error_count": 0
             },
@@ -64,13 +53,13 @@ class SharedState:
             },
             "metadata": {
                 "version": "2.0",
-                "lastUpdated": "2026-02-03T00:00:00Z",
-                "author": "Ruben Santiago Aguilar and Roberto Carlos Jimenez Rodriguez"
+                "lastUpdated": "2026-02-08T00:00:00Z",
+                "author": "Project Snow Team"
             }
         }
 
     def _initialize_volatile_data(self):
-        """ This function gives default values to the volatile data. """
+        """ Sets up RAM-only variables (Not saved to disk). """
         self._volatile_data = {
             "voltage": 0.0,
             "cpu_temp": 0.0,
@@ -79,112 +68,55 @@ class SharedState:
         }
 
     def _load_from_disk(self):
-        """
-            This function does 3 things:
-            - Opens and reads the JSON file
-            - If the file doesn't exist or is corrupted, use defaults
-            - Copy values into self._persistent_data
-        """
-
-        # Try to open the JSON file
+        """ Loads JSON state. Falls back to defaults on failure. """
         try:
+            if not self._json_path.exists():
+                raise FileNotFoundError
+            
             with open(self._json_path, 'r') as f:
                 data = json.load(f)
                 self._persistent_data = data
-                logger.info("Loaded state from the disk")
+                logger.info("State loaded successfully from disk.")
 
-        # In case it doesn't exist, default values are used
-        except FileNotFoundError:
-            logger.info("No saved state found, using defaults")
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logger.warning(f"State load failed ({e}). Using factory defaults.")
             self._persistent_data = self._get_default_persistent_state()
+            self._save_to_disk() 
 
-        # In case it is corrupted, default values are used
-        except json.JSONDecodeError:
-            logger.error("Corrupted state file, using defaults")
-            self._persistent_data = self._get_default_persistent_state()
-        
     def _save_to_disk(self) -> None:
-        """ Save entire persistent data to JSON file. """
+        """ Atomic-like save of persistent data to JSON. """
         try:
             with open(self._json_path, "w") as f:
-                json.dump(self._persistent_data, f, indent = 4)
-            logger.info("Saved state to disk")
+                json.dump(self._persistent_data, f, indent=4)
         except Exception as e:
-            logger.error(f"Failed to save state to disk: {e}")   
+            logger.error(f"CRITICAL: Failed to save state to disk: {e}")   
 
-# ===========================================================
-# Functions to make shorter the process of saving and loading
-# ===========================================================
-
-    def get_resilience(self, key: str) -> any:
-        """
-        Obtain a value from resilience
-
-        Args:
-            key (str): This is the resilience key to retrieve
-        Returns:
-            The current value in the key
-        """
+    def get_resilience(self, key: str) -> Any:
         with self._lock:
-            return self._persistent_data["resilience"].get(key)
+            return self._persistent_data.get("resilience", {}).get(key)
     
-    def set_resilience(self, key: str, value: any) -> None:
-        """
-        Update a value from resilience
-
-        Args:
-            key (str): This is the resilience key to update
-            value (any): This is the value to store
-        """
+    def set_resilience(self, key: str, value: Any) -> None:
         with self._lock:
+            if "resilience" not in self._persistent_data:
+                self._persistent_data["resilience"] = {}
             self._persistent_data["resilience"][key] = value
             self._save_to_disk()
 
-    def get_metric(self, key: str) -> any:
-        """
-        Obtain a value from scientific_metrics
-
-        Args:
-            key (str): This is the scientific_metrics key to retrieve
-        Returns:
-            The current value in the key
-        """
-
+    def get_metric(self, key: str) -> Any:
         with self._lock:
-            return self._persistent_data["scientific_metrics"].get(key)
+            return self._persistent_data.get("scientific_metrics", {}).get(key)
         
-    def set_metric(self, key: str, value: any) -> None:
-        """
-        Update a value from scientific_metrics
-
-        Args:
-            key (str): This is the scientific_metrics key to update
-            value (any): This is the value to store
-        """
+    def set_metric(self, key: str, value: Any) -> None:
         with self._lock:
+            if "scientific_metrics" not in self._persistent_data:
+                self._persistent_data["scientific_metrics"] = {}
             self._persistent_data["scientific_metrics"][key] = value
             self._save_to_disk()
     
-    def get_volatile(self, key: str) -> any:
-        """
-        Obtain a value from volatile data
-
-        Args:
-            key (str): This is the volatile data key to retrieve
-        Returns:
-            The current value in the key
-        """
-
-        with self._lock:   
+    def get_volatile(self, key: str) -> Any:
+        with self._lock:    
             return self._volatile_data.get(key)
     
-    def set_volatile(self, key: str, value: any) -> None:
-        """
-        Update a value from volatile data
-
-        Args:
-            key (str): This is the volatile data key to update
-            value (any): This is the value to store
-        """
+    def set_volatile(self, key: str, value: Any) -> None:
         with self._lock:
             self._volatile_data[key] = value
