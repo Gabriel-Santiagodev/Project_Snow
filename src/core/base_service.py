@@ -54,6 +54,15 @@ class BaseService(ABC, threading.Thread):
         """
         self.consecutive_errors += 1
 
+    def report_health(self):
+        """
+        Signals that the service is working correctly.
+        Usage: Call this at the end of a successful loop iteration.
+        Effect: Resets the 'sickness' level to 0 (Healthy).
+        """
+        
+        self.consecutive_errors = 0
+
     def stop(self):
         """
         Thread-safe method to stop the service.
@@ -92,5 +101,6 @@ class BaseService(ABC, threading.Thread):
         Rules for Implementation:
         1. Must use a loop: `while not self._stop_event.is_set():`
         2. Must call `self.report_error()` on failure.
+        3. Must call self.report_health() on success.
         """
         pass
