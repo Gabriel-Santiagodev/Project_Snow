@@ -1,9 +1,8 @@
 {
-    "_comment": "Services List - Version 1.0",
+    "_comment": "Services List - Version TEST",
     "services": [
-        "src.services.camera_service.CameraService",
-        "src.services.yolo_service.YoloService",
-        "src.services.audio_service.AudioService",
-        "src.services.sensor_service.SensorsService"
+        "src.services.dummy_consumer.DummyConsumer",
+        "src.services.dummy_producer.DummyProducer"
+        
     ]
 }

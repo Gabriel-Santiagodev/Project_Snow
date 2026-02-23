@@ -65,7 +65,8 @@ class ServiceManager:
         """
         try:
             with open("config/services_list.json", 'r') as f:
-                return json.load(f)
+                data = json.load(f)
+                return data.get("services", [])
         except Exception as e:
             self.logger.critical(f"FATAL: services_list.json could not be read: {e}")
             return [] 
