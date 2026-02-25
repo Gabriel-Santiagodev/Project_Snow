@@ -41,8 +41,9 @@ hardware:
   audio:
     volume: 80
     audio_files:
-      sonido_prueva0_path: "data/audio/sonido_prueba0.mp3"
-      sonido_prueva2_path: "data/audio/sonido_prueba2.mp3"
+      testing_audio0_path: "data/audio/testing_audio0.mp3"
+      testing_audio1_path: "data/audio/testing_audio1.mp3"
+      alert_audio: "data/audio/"
 
 # =============================================================================
 # GPIO PINS VARIABLES (BCM Numbering)
