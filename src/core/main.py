@@ -14,7 +14,11 @@ import os
 import sys
 import json
 from typing import Any
-from gpiozero import LED, Button
+try:
+    from gpiozero import LED, Button
+except ImportError:
+    LED = None
+    Button = None
 from src.utils.logger import setup_logging
 from src.core.service_manager import ServiceManager
 
@@ -52,10 +56,14 @@ def check_maintenance_mode(config: dict, logger: logging.Logger) -> None:
         pin_led = config['hardware']['pins']['emergency_light']
         pin_button = config['hardware']['pins']['reset_button']
         
-        emergency_light = LED(pin_led)
-        reset_button = Button(pin_button)
-        
-        emergency_light.on()
+        if LED and Button:
+            emergency_light = LED(pin_led)
+            reset_button = Button(pin_button)
+            emergency_light.on()
+        else:
+            emergency_light = None
+            reset_button = None
+            logger.warning("gpiozero not installed. Running in laptop simulated mode.")
         
         # Update state in memory
         system_state['resilience']['maintenance_mode_active'] = True
@@ -66,7 +74,16 @@ def check_maintenance_mode(config: dict, logger: logging.Logger) -> None:
 
         # Zombie Loop
         while True:
-            if reset_button.is_pressed:
+            # Check button press if available, else use a keyboard fallback prompt
+            is_pressed = False
+            if reset_button is not None:
+                is_pressed = reset_button.is_pressed
+            else:
+                # Laptop simulated flow
+                val = input("SIMULATED HARDWARE: Press ENTER to simulate reset button... ")
+                is_pressed = True
+
+            if is_pressed:
                 logger.info("Reset button detected. Initializing system recovery...")
                 
                 # Reset counters and flags
@@ -77,7 +94,8 @@ def check_maintenance_mode(config: dict, logger: logging.Logger) -> None:
                 with open("config/system_state.json", 'w') as f:
                     json.dump(system_state, f, indent=4)
                 
-                emergency_light.off()
+                if emergency_light is not None:
+                    emergency_light.off()
                 logger.info("System unlocked. Proceeding to normal startup.")
                 break
             
