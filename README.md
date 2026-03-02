@@ -73,10 +73,10 @@ bash scripts/main_launcher.sh
 
 Project Snow is developed by engineering students from the **Universidad Politécnica de Santa Rosa Jáuregui**, committed to delivering industrial-grade edge computing architectures.
 
-* **Ruben Gabriel Aguilar Santiago** - Lead Engineer / Computational Robotics Engineering
-* **Roberto Carlos Jimenez Rodriguez** - Architecture Lead / ITIID Engineering
-* **Joshua Suarez Tinajero** - Infrastructure Lead / Computational Robotics Engineering
-* **Alvaro Huezzo Patiño** - General Co-Lead / Computational Robotics Engineering
+* **Lead Engineer / Computational Robotics Engineering:** Ruben Gabriel Aguilar Santiago
+* **Architecture Lead / ITIID Engineering:** Roberto Carlos Jimenez Rodriguez
+* **Infrastructure Lead / Computational Robotics Engineering:** Joshua Suarez Tinajero
+* **General Co-Lead / Computational Robotics Engineering:** Alvaro Huezzo Patiño
 * **Collaborators (ITIID Engineering):** Fernando, Valeria, Abraham, Yerik.
 
 ---
