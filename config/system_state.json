@@ -6,14 +6,14 @@
     },
     "resilience": {
         "maintenance_mode_active": false,
-        "reboot_error_count": 2
+        "reboot_error_count": 3
     },
     "persistence_settings": {
         "eco_mode_active": false
     },
     "scientific_metrics": {
         "total_people_assisted": 0,
-        "total_system_restarts": 2
+        "total_system_restarts": 3
     },
     "metadata": {
         "version": "2.0",
