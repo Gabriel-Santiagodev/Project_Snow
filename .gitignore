@@ -12,9 +12,11 @@ __pycache__/
 *.log 
 logs/
 
-# --- User Configuration ---
+# --- User Configuration & OS Files ---
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 
 # --- Environment variables ---
 .env 
@@ -27,6 +29,9 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# --- System State (Crucial to avoid merge conflicts) ---
+config/system_state.json
 
 # --- Files ---
 # Keep folder structure and READMEs, but ignore large binaries
