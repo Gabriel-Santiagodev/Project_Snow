@@ -1,7 +1,7 @@
 # ==============================================================================
 # PROJECT SNOW - MAIN ENTRY POINT
 # ==============================================================================
-# Version: 1.3
+# Version: 1.4 (Path Resolution Fix)
 # Last Updated: March 2026
 # Author: Ruben Gabriel Aguilar Santiago
 # Purpose: System initialization, Gatekeeper Logic, and Keep-Alive Loop
@@ -14,20 +14,20 @@ import os
 import sys
 import json
 from typing import Any
+
 try:
     from gpiozero import LED, Button
 except ImportError:
     LED = None
     Button = None
+    
 from src.utils.logger import setup_logging
 from src.core.service_manager import ServiceManager
 
-def load_config() -> dict[str, Any]:
+def load_config(project_root: str) -> dict[str, Any]:
     """
-    Load system configuration from the YAML file.
+    Load system configuration from the YAML file using absolute paths.
     """
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_dir, '../../'))
     config_path = os.path.join(project_root, 'config', 'settings.yaml')
 
     if not os.path.exists(config_path):
@@ -36,13 +36,14 @@ def load_config() -> dict[str, Any]:
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-def check_maintenance_mode(config: dict, logger: logging.Logger) -> None:
+def check_maintenance_mode(config: dict, logger: logging.Logger, state_path: str) -> None:
     """
     The Gatekeeper: Enforces Maintenance Mode.
     If 'reboot_error_count' >= 3, locks the system until physical reset.
     """
     try:
-        with open("config/system_state.json", 'r') as f:
+        # We now use the absolute state_path (String) passed from main()
+        with open(state_path, 'r') as f:
             system_state = json.load(f)
     except Exception as e:
         logger.error(f"Could not read system state, skipping maintenance check: {e}")
@@ -68,7 +69,7 @@ def check_maintenance_mode(config: dict, logger: logging.Logger) -> None:
         # Update state in memory
         system_state['resilience']['maintenance_mode_active'] = True
         
-        # Log CRITICAL state (Corrected casing and spelling)
+        # Log CRITICAL state
         logger.critical(f"SYSTEM FROZEN: Maintenance Mode Active (Errors: {reboot_error_count})")
         logger.critical("Waiting for physical reset button interaction...")
 
@@ -90,8 +91,8 @@ def check_maintenance_mode(config: dict, logger: logging.Logger) -> None:
                 system_state['resilience']['reboot_error_count'] = 0
                 system_state['resilience']['maintenance_mode_active'] = False
                 
-                # Save clean state to disk
-                with open("config/system_state.json", 'w') as f:
+                # Save clean state to disk using the absolute path
+                with open(state_path, 'w') as f:
                     json.dump(system_state, f, indent=4)
                 
                 if emergency_light is not None:
@@ -103,6 +104,12 @@ def check_maintenance_mode(config: dict, logger: logging.Logger) -> None:
         return
 
 def main():
+    # 0. Global Path Resolution
+    # This prevents pathing errors no matter where the user executes the script from
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '../../'))
+    state_path = os.path.join(project_root, "config", "system_state.json")
+
     # 1. Start the Black Box (Logging System)
     listener = setup_logging()
     
@@ -111,14 +118,15 @@ def main():
 
     # 2. Load the Manual (Configuration)
     try:
-        config = load_config()
-        logger.info("Configuration loaded successfully.")
+        config = load_config(project_root)
+        logger.info("Configuration from settings.yaml loaded successfully.")
     except Exception as e:
         logger.critical(f"FATAL: Failed to load settings.yaml: {e}")
+        listener.stop()
         sys.exit(1)
 
     # 2.5. THE GATEKEEPER CHECK
-    check_maintenance_mode(config, logger)
+    check_maintenance_mode(config, logger, state_path)
 
     # 3. Hire the Manager & 4. Start Engines
     try:
