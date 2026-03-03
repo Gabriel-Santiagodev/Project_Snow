@@ -129,7 +129,7 @@ class ServiceManager:
         # Read limit from config or default to 3
         max_thread_restarts = self.config.get('system', {}).get('max_thread_restarts', 3)
 
-        for service in self.services:
+        for service in list(self.services):
             # --- TIER 1: Diagnosis ---
             is_dead = not service.is_alive()
             is_sick = service.consecutive_errors >= 3
