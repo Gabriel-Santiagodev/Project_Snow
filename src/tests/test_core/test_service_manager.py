@@ -1,6 +1,7 @@
 import pytest
 import time
-from unittest.mock import MagicMock, patch
+import os
+from unittest.mock import MagicMock, patch, mock_open
 from src.core.service_manager import ServiceManager
 from src.core.base_service import BaseService
 
@@ -14,39 +15,45 @@ class WatchdogDummyService(BaseService):
             time.sleep(0.01)
 
 @pytest.fixture
-def manager(mock_config, mocker):
+def manager(mock_config):
     """Provides a fresh ServiceManager instance with mocked SharedState."""
     mock_shared_state = MagicMock()
     mock_shared_state.get_resilience.return_value = 0
     mock_shared_state.get_metric.return_value = 0
     
-    mocker.patch('src.core.service_manager.SharedState', return_value=mock_shared_state)
-    return ServiceManager(mock_config)
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../'))
+    return ServiceManager(mock_config, mock_shared_state, PROJECT_ROOT)
 
-def test_load_services_list(manager, mocker):
+@patch('builtins.open', new_callable=mock_open, read_data='{"services": ["src.dummy.DummyService"]}')
+def test_load_services_list(mock_file, manager):
     """Test loading services from config json."""
-    mock_open = mocker.mock_open(read_data='{"services": ["src.dummy.DummyService"]}')
-    mocker.patch('builtins.open', mock_open)
-    
+    # Ejecutamos el método
     services = manager._load_services_list()
+    
+    # Verificamos
     assert services == ["src.dummy.DummyService"]
 
-def test_start_all_services(manager, mocker):
+@patch('importlib.import_module')
+def test_start_all_services(mock_import, manager):
     """Test dynamic importing and starting of services."""
-    mocker.patch.object(manager, '_load_services_list', return_value=["dummy_module.WatchdogDummyService"])
     
-    # Mock importlib to return our WatchdogDummyService class
-    mock_module = MagicMock()
-    mock_module.WatchdogDummyService = WatchdogDummyService
-    mocker.patch('importlib.import_module', return_value=mock_module)
-    
-    manager.start_all_services()
-    
-    assert len(manager.services) == 1
-    assert manager.services[0].name == "WatchdogDummyService"
-    assert "WatchdogDummyService" in manager.restart_counts
-    
-    manager.stop_all()
+    # Bloque 'with': Falsificamos temporalmente el _load_services_list
+    with patch.object(manager, '_load_services_list', return_value=["dummy_module.WatchdogDummyService"]):
+        
+        # Configuramos el módulo falso que devolverá importlib
+        mock_module = MagicMock()
+        mock_module.WatchdogDummyService = WatchdogDummyService
+        mock_import.return_value = mock_module
+        
+        # Ejecutamos la función
+        manager.start_all_services()
+        
+        # Aserciones de verificación
+        assert len(manager.services) == 1
+        assert manager.services[0].name == "WatchdogDummyService"
+        assert "WatchdogDummyService" in manager.restart_counts
+        
+        manager.stop_all()
 
 @patch('os.system') # Prevent actual reboot during test
 def test_watchdog_healthy(mock_os, manager):

@@ -21,6 +21,6 @@ def mock_config():
     }
 
 @pytest.fixture
-def clean_shared_state():
+def clean_shared_state(tmp_path):
     """Provides a fresh instance of SharedState for each test."""
-    return SharedState()
+    return SharedState(json_path=str(tmp_path / "test_state.json"))

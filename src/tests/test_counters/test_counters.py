@@ -8,7 +8,7 @@ import threading
 
 # Add project root to sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, '../../'))
+project_root = os.path.abspath(os.path.join(current_dir, '../../../'))
 sys.path.insert(0, project_root)
 
 from src.core.service_manager import ServiceManager
@@ -44,7 +44,7 @@ def test_counters():
     if os.path.exists(state_file):
         os.remove(state_file)
         
-    manager = ServiceManager(config)
+    manager = ServiceManager(config, SharedState(state_file),project_root)
     
     # Replace the list of services to only run our MockCrashingService
     # We must provide the correct module path

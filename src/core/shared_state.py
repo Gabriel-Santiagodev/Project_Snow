@@ -1,7 +1,7 @@
 # ==============================================================================
 # PROJECT SNOW - SHARED STATE
 # ==============================================================================
-# Version: 2.2 
+# Version: 2.3
 # Last Updated: February 8, 2026
 # Author: Roberto Carlos Jimenez Rodriguez 
 # Purpose: Thread-safe Management of Volatile and Persistent information
@@ -11,6 +11,7 @@ import threading
 import json
 import logging
 import queue 
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional 
 
@@ -86,8 +87,12 @@ class SharedState:
     def _save_to_disk(self) -> None:
         """ Atomic-like save of persistent data to JSON. """
         try:
-            with open(self._json_path, "w") as f:
+            tmp_path = str(self._json_path) + ".tmp"
+
+            with open(tmp_path, "w") as f:
                 json.dump(self._persistent_data, f, indent=4)
+            
+            os.replace(tmp_path, self._json_path)
         except Exception as e:
             logger.error(f"CRITICAL: Failed to save state to disk: {e}")   
 

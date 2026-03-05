@@ -1,7 +1,7 @@
 # ==============================================================================
 # PROJECT SNOW - MAIN ENTRY POINT
 # ==============================================================================
-# Version: 1.4 (Path Resolution Fix)
+# Version: 1.5 (single source of truth fix)
 # Last Updated: March 2026
 # Author: Ruben Gabriel Aguilar Santiago
 # Purpose: System initialization, Gatekeeper Logic, and Keep-Alive Loop
@@ -14,6 +14,7 @@ import os
 import sys
 import json
 from typing import Any
+from src.core.shared_state import SharedState
 
 try:
     from gpiozero import LED, Button
@@ -36,21 +37,14 @@ def load_config(project_root: str) -> dict[str, Any]:
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-def check_maintenance_mode(config: dict, logger: logging.Logger, state_path: str) -> None:
+def check_maintenance_mode(config: dict, logger: logging.Logger, shared_state: SharedState) -> None:
     """
     The Gatekeeper: Enforces Maintenance Mode.
     If 'reboot_error_count' >= 3, locks the system until physical reset.
     """
-    try:
-        # We now use the absolute state_path (String) passed from main()
-        with open(state_path, 'r') as f:
-            system_state = json.load(f)
-    except Exception as e:
-        logger.error(f"Could not read system state, skipping maintenance check: {e}")
-        return
     
     # Access using the correct key 'resilience'
-    reboot_error_count = system_state.get("resilience", {}).get("reboot_error_count", 0)
+    reboot_error_count = shared_state.get_resilience("reboot_error_count") or 0
 
     if reboot_error_count >= 3:
         # Hardware Setup
@@ -67,7 +61,7 @@ def check_maintenance_mode(config: dict, logger: logging.Logger, state_path: str
             logger.warning("gpiozero not installed. Running in laptop simulated mode.")
         
         # Update state in memory
-        system_state['resilience']['maintenance_mode_active'] = True
+        shared_state.set_resilience("maintenance_mode_active", True)
         
         # Log CRITICAL state
         logger.critical(f"SYSTEM FROZEN: Maintenance Mode Active (Errors: {reboot_error_count})")
@@ -88,12 +82,8 @@ def check_maintenance_mode(config: dict, logger: logging.Logger, state_path: str
                 logger.info("Reset button detected. Initializing system recovery...")
                 
                 # Reset counters and flags
-                system_state['resilience']['reboot_error_count'] = 0
-                system_state['resilience']['maintenance_mode_active'] = False
-                
-                # Save clean state to disk using the absolute path
-                with open(state_path, 'w') as f:
-                    json.dump(system_state, f, indent=4)
+                shared_state.set_resilience("reboot_error_count", 0)
+                shared_state.set_resilience("maintenance_mode_active", False)
                 
                 if emergency_light is not None:
                     emergency_light.off()
@@ -110,8 +100,10 @@ def main():
     project_root = os.path.abspath(os.path.join(current_dir, '../../'))
     state_path = os.path.join(project_root, "config", "system_state.json")
 
+    shared_state = SharedState(state_path)
+
     # 1. Start the Black Box (Logging System)
-    listener = setup_logging()
+    listener = setup_logging(project_root)
     
     logger = logging.getLogger("Main")
     logger.info("Project Snow System Initializing...")
@@ -126,11 +118,11 @@ def main():
         sys.exit(1)
 
     # 2.5. THE GATEKEEPER CHECK
-    check_maintenance_mode(config, logger, state_path)
+    check_maintenance_mode(config, logger,shared_state)
 
     # 3. Hire the Manager & 4. Start Engines
     try:
-        service_manager = ServiceManager(config)
+        service_manager = ServiceManager(config, shared_state, project_root)
         service_manager.start_all_services()
         
         logger.info("System is Online. Entering Keep-Alive Loop.")

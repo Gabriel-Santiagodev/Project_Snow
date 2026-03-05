@@ -1,7 +1,7 @@
 # ==============================================================================
 # PROJECT SNOW - LOGGER UTILS
 # ==============================================================================
-# Version: 1.1
+# Version: 1.2
 # Last Updated: January 2026
 # Author: Ruben Gabriel Aguilar Santiago
 # Purpose: Non-blocking logging system using QueueHandler
@@ -35,7 +35,7 @@ def load_config() -> dict[str, Any]:
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
 
-def setup_logging() -> logging.handlers.QueueListener:
+def setup_logging(project_root: str) -> logging.handlers.QueueListener:
     """
     Initialize the Non-Blocking Logging System.
 
@@ -54,14 +54,15 @@ def setup_logging() -> logging.handlers.QueueListener:
     """
     
     # 1. Ensure logs directory exists
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_dir, '../../'))
     logs_path = os.path.join(project_root, 'logs')
     os.makedirs(logs_path, exist_ok=True)
     
     # 2. Load basic config (Formatters, Levels)
     config = load_config()
+    absolute_log_path = os.path.join(project_root, 'logs','app.log')
+    config['handlers']['file']['filename'] = absolute_log_path
     logging.config.dictConfig(config)
+    
 
     # 3. Create the buffer Queue
     log_queue = queue.Queue()
