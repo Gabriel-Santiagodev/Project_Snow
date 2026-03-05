@@ -20,7 +20,7 @@ def async_logger():
     Pytest Fixture: Initializes the non-blocking logger before the test,
     and guarantees the listener stops gracefully after the test.
     """
-    listener = setup_logging()
+    listener = setup_logging(PROJECT_ROOT)
     
     if not listener:
         pytest.fail("Failed to initialize logging listener.")

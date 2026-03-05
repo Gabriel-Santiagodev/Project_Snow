@@ -1,7 +1,7 @@
 # ==============================================================================
 # PROJECT SNOW - SERVICE MANAGER
 # ==============================================================================
-# Version: 1.0
+# Version: 1.2
 # Last Updated: January 2026
 # Author: Ruben Gabriel Aguilar Santiago
 # Purpose: Orchestrator for all robotic micro-services (Start, Monitor, Heal)
@@ -39,14 +39,14 @@ class ServiceManager:
         A scorecard tracking how many times each service has been restarted.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, shared_state, project_root):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.config = config 
         
         # Initialize the Central Nervous System (Shared State)
         # This is the ONLY instance in the entire program.
-        self.shared_state = SharedState()
-        
+        self.shared_state = shared_state
+        self.project_root = project_root
         self.services = []
         
         # Tracks service stability history
@@ -64,7 +64,8 @@ class ServiceManager:
             Returns an empty list [] on failure to prevent system crash.
         """
         try:
-            with open("config/services_list.json", 'r') as f:
+            services_path = os.path.join(self.project_root, "config","services_list.json")
+            with open(services_path, 'r') as f:
                 data = json.load(f)
                 return data.get("services", [])
         except Exception as e:
@@ -154,8 +155,8 @@ class ServiceManager:
                         self.shared_state.set_resilience("reboot_error_count", current_system_reboots + 1)
                         total_restarts = self.shared_state.get_metric("total_system_restarts") or 0
                         self.shared_state.set_metric("total_system_restarts", total_restarts + 1)
-                    except:
-                        pass        
+                    except Exception as e:
+                        self.logger.error(f"WATCHDOG: Failed to persist reboot count before reboot: {e}")        
                     self._perform_system_reboot()
                     return # Exit immediately to allow reboot
                 else:
@@ -216,6 +217,8 @@ class ServiceManager:
         
         # Step 2: Wait for closure (Join)
         for service in self.services:
-            service.join()
+            service.join(timeout=5.0)
+            if service.is_alive():
+                self.logger.warning(f"ZOMBIE THREAD DETECTED: {service.name}")
     
         self.logger.info("All services have been stopped.")
