@@ -17,6 +17,7 @@ To ensure system stability, prevent memory leaks, and enable automatic error rec
 5.  **Shared State Memory (Crucial):** You must respect mutability rules when communicating with other threads via `self.shared_state`:
     -   **Mutable objects (Queues, Lists):** NEVER use `set_volatile()`. Obtain the reference once using `get_volatile()` in your `__init__` and use native methods (like `.put()` or `.get()`).
     -   **Immutable objects (Booleans, Integers, Strings):** Use `get_volatile()` to read and `set_volatile()` to overwrite the value.
+  6.  **Service Name (Critical for Watchdog):** Never override `self.name` in your service class. The Watchdog tracks failure history using `self.name`, which is automatically set to your class name by `BaseService`. Overriding it causes the restart counter to be silently lost, which could prevent the Hard Reboot from ever triggering.
 
 ---
 
