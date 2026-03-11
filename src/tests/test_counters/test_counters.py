@@ -29,7 +29,7 @@ class MockCrashingService(BaseService):
             self.report_error()
             time.sleep(1) # Wait a bit before next error
 
-def test_counters():
+def test_counters(tmp_path):
     # Load original config
     import yaml
     config_path = os.path.join(project_root, 'config', 'settings.yaml')
@@ -51,7 +51,7 @@ def test_counters():
     # To do this cleanly, we can add this very module to sys.modules or use a neat trick
     # Since ServiceManager uses importlib, we will create a dummy file for it to import
     
-    dummy_service_path = os.path.join(project_root, 'src', 'tests', 'dummy_crashing_service.py')
+    dummy_service_path = tmp_path / "dummy_crashing_service.py"
     with open(dummy_service_path, 'w') as f:
         f.write('''from src.core.base_service import BaseService
 import time
@@ -66,7 +66,8 @@ class DummyCrashingService(BaseService):
 ''')
     
     # Patch _load_services_list to return our dummy service
-    with patch.object(manager, '_load_services_list', return_value=['src.tests.dummy_crashing_service.DummyCrashingService']):
+    sys.path.insert(0, str(tmp_path))
+    with patch.object(manager, '_load_services_list', return_value=['dummy_crashing_service.DummyCrashingService']):
         # Also patch os.system so we don't actually reboot the real machine!
         with patch('os.system') as mock_os_system:
             logger.info("Starting all services (which is just our DummyCrashingService)...")
@@ -109,14 +110,3 @@ class DummyCrashingService(BaseService):
             
             manager.stop_all()
             logger.info("TEST PASSED: Local, Service Manager, and General counters are working.")
-
-    # Cleanup the dummy file
-    if os.path.exists(dummy_service_path):
-        os.remove(dummy_service_path)
-    
-    # Cleanup config state
-    if os.path.exists(state_file):
-        os.remove(state_file)
-
-if __name__ == "__main__":
-    test_counters()

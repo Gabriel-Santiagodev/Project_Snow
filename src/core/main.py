@@ -77,6 +77,7 @@ def check_maintenance_mode(config: dict, logger: logging.Logger, shared_state: S
                 # Laptop simulated flow
                 val = input("SIMULATED HARDWARE: Press ENTER to simulate reset button... ")
                 is_pressed = True
+                time.sleep(0.1)
 
             if is_pressed:
                 logger.info("Reset button detected. Initializing system recovery...")
