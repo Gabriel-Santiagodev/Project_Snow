@@ -40,11 +40,11 @@ def test_counters(tmp_path):
     config['system'] = {'max_thread_restarts': 2}
     
     # Clean up old system_state.json for a clean test
-    state_file = os.path.join(project_root, 'config', 'system_state.json')
+    state_file = str(tmp_path / "test_system_state.json")
     if os.path.exists(state_file):
         os.remove(state_file)
         
-    manager = ServiceManager(config, SharedState(state_file),project_root)
+    manager = ServiceManager(config, SharedState(state_file), project_root)
     
     # Replace the list of services to only run our MockCrashingService
     # We must provide the correct module path
