@@ -14,6 +14,7 @@ To ensure system stability, prevent memory leaks, and enable automatic error rec
 4.  **Health & Error Reporting:**
     -   Call `self.report_health()` at the end of every successful loop iteration to clear error flags.
     -   Call `self.report_error()` when you detect a hardware or logical failure (e.g., a disconnected camera or empty frame). Accumulating 3 consecutive errors will trigger an automatic thread restart.
+    -   **CRITICAL:** Always place a `continue` statement immediately after calling `self.report_error()`. This ensures the loop skips the `report_health()` call at the bottom and properly registers the failure.
 5.  **Shared State Memory (Crucial):** You must respect mutability rules when communicating with other threads via `self.shared_state`:
     -   **Mutable objects (Queues, Lists):** NEVER use `set_volatile()`. Obtain the reference once using `get_volatile()` in your `__init__` and use native methods (like `.put()` or `.get()`).
     -   **Immutable objects (Booleans, Integers, Strings):** Use `get_volatile()` to read and `set_volatile()` to overwrite the value.
