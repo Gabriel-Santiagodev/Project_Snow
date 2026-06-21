@@ -165,7 +165,95 @@ Unlike volatile memory (RAM), these methods write directly to the physical stora
 
 ---
 
-## 🔌 4. Service Registration
+## ⚙️ 4. Working with `config/settings.yaml`
+
+The `settings.yaml` file is the **single source of truth** for all external configuration in the project. Understanding how to use it correctly is one of the most important rules of this codebase.
+
+### 4.1 The Golden Rule: Zero Hardcoding
+
+**Never write a fixed value directly in your Python code.** This is the most common mistake and one that can silently break other services or make the system impossible to configure without digging into the code.
+
+| ❌ WRONG — Hardcoded in Python | ✅ CORRECT — Read from `settings.yaml` |
+| :--- | :--- |
+| `threshold = 0.85` | `threshold = self.config['software']['ai_model']['confidence_threshold']` |
+| `pin = 17` | `pin = self.config['hardware']['pins']['emergency_light']` |
+| `path = "data/audio/alert.mp3"` | `path = self.config['hardware']['audio']['audio_files']['alert_audio']` |
+
+> **Note:** Internal counters (`count = 0`) or purely logical variables (`is_running = True`) are the only exception — those stay in your script.
+
+---
+
+### 4.2 The Existing Variables are Your Starting Point
+
+The variables already in `settings.yaml` are the **project defaults**. They were designed to cover the core use cases of the system. **You are not required to keep them exactly as they are.** You are free and encouraged to:
+
+- **Use them as-is** if they fit your service's needs.
+- **Modify their values** to better suit your module (e.g., change a camera resolution or an audio volume).
+- **Add new variables** if your service requires a parameter that doesn't exist yet.
+
+What you must **never** do is bypass the file and write the value directly in Python.
+
+---
+
+### 4.3 Adding a New Variable — Namespace Convention
+
+If you need to add a configuration variable that doesn't exist yet, you **must** group it under a namespace (a YAML block) that corresponds to your service's area. This keeps the file organized and prevents naming conflicts between modules.
+
+The file is already organized in three top-level sections: `hardware:`, `software:`, and `system:`. Place your new variable inside the relevant sub-block.
+
+**Example:** Suppose you are building a `SensorService` and need to configure a distance threshold. Here is the correct way to do it:
+
+**Step 1 — Add your variable to `config/settings.yaml` under the correct namespace:**
+
+```yaml
+# =============================================================================
+# SOFTWARE
+# =============================================================================
+
+software:
+
+  # ... existing ai_model and detection blocks ...
+
+  # =============================================================================
+  # SENSOR VARIABLES  <-- Add a clearly labeled block for your service
+  # =============================================================================
+  sensor_config:
+    distance_threshold_cm: 150  # Max detection distance in centimeters
+    polling_rate_hz: 10         # How many times per second the sensor is read
+```
+
+**Step 2 — Read your variable in your service's `__init__` using `self.config`:**
+
+```python
+class SensorService(BaseService):
+    def __init__(self, shared_state, config):
+        super().__init__(shared_state, config)
+
+        # Read the entire sensor config block from settings.yaml
+        sensor_cfg = self.config.get('software', {}).get('sensor_config', {})
+
+        self.distance_threshold = sensor_cfg.get('distance_threshold_cm', 150)
+        self.polling_rate = sensor_cfg.get('polling_rate_hz', 10)
+```
+
+> **Why `.get('key', default)`?** It's a safe read: if the key is missing from the YAML (e.g., someone renamed it by mistake), your service won't crash — it will fall back to the default value and keep running.
+
+---
+
+### 4.4 Quick Summary Checklist
+
+Before submitting your service, ask yourself:
+
+- [ ] Did I put ALL external values (paths, pins, thresholds, resolutions) in `settings.yaml`?
+- [ ] Did I group my new variables under a dedicated namespace (e.g., `my_service_config:`)?
+- [ ] Am I reading the config in `__init__` using `self.config.get(...)`?
+- [ ] Is there **zero** instance of a fixed number or path written directly in my Python file?
+
+If all boxes are checked, you're following the standard correctly. ✅
+
+---
+
+## 🔌 5. Service Registration
 
 Creating your `.py` file does not automatically execute it. You must register your new service into the system's pipeline.
 
@@ -184,3 +272,4 @@ Creating your `.py` file does not automatically execute it. You must register yo
         "src.services.your_new_module.YourNewClass"
     ]
 }
+```
