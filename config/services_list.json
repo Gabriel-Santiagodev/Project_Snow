@@ -1,4 +1,6 @@
 {
     "_comment": "Services List - Add your module paths here",
-    "services": []
+    "services": [
+        "src.services.audio_service.AudioService"
+    ]
 }
