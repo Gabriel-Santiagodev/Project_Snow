@@ -64,7 +64,7 @@ class SharedState:
         self._volatile_data = {
             "voltage": 0.0,
             "cpu_temp": 0.0,
-            "camera_frame_queue": queue.Queue(),
+            "camera_frame_queue": queue.Queue(maxsize=1),
             "person_detected": False 
         }
 

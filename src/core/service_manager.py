@@ -116,7 +116,7 @@ class ServiceManager:
     
     def check_health(self):
         """
-        Main Watchdog Routine (The Doctor).
+        Main Watchdog Routine.
         
         This method checks if any service is 'Dead' (crashed) or 'Sick' (logical errors).
         It implements a Tiered Recovery Strategy:
