@@ -18,13 +18,14 @@ class YoloService(BaseService):
 
                 detected = any(box.conf[0] >= self.conf_threshold for box in results[0].boxes)
 
-                self.shared_state.set_volatile("person_detected", detected)     # We assign the detection to person_detected
+                if detected:
+                    self.shared_state.set_volatile("person_detected", True)
 
                 self.report_health()                                            # We made sure everything went well
 
                 time.sleep(1)                                                   # throttle
             
-            except queue. Empty:                                                # Frame queue vacía es normal, no es un errorreal
+            except queue.Empty:                                                # Frame queue vacía es normal, no es un errorreal
                 pass
             except Exception as e:
                 self.logger.error(f"Unexpected error in YOLOservice: {e}")
