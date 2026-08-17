@@ -1,6 +1,6 @@
 {
     "_comment": "Services List - Add your module paths here",
     "services": [
-        "src.services.camera_service.cameras_service"
+        "src.services.camera_service.CameraService"
     ]
 }
