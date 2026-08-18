@@ -40,11 +40,9 @@ hardware:
       enabled: true
       zones:
         zone_b1:
-          coords: [0, 0, 320, 480]      # x_min, y_min, x_max, y_max  (Zona 2 — frame sent to queue)
+          coords: [0, 0, 320, 480]      # x_min, y_min, x_max, y_max
         zone_b2:
-          coords: [320, 0, 640, 480]    # x_min, y_min, x_max, y_max  (Zona 3 — Pattern 2 entry)
-        zone_b3:
-          coords: [0, 0, 640, 200]      # x_min, y_min, x_max, y_max  (Zona 4 — journey trigger) NOTE: calibrate coords
+          coords: [320, 0, 640, 480]
 
 # =============================================================================
 # AUDIO VARIABLES
@@ -85,8 +83,7 @@ software:
     obstruction_threshold: 5000 # Pixel change for obstruction
 
   camera_service:
-    movement_threshold: 5          # Min mean pixel diff to register as motion
-    freeze_timeout_seconds: 10.0   # Seconds of no motion before camera is declared frozen
+    movement_threshold: 5 #Pixel change for freeze detection
     
 
 # =============================================================================
