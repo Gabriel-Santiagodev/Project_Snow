@@ -1,0 +1,23 @@
+[Unit]
+Description=Project Snow - Edge Computing AI Node
+After=network.target
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Project_Snow
+Environment="HAILO_PATH=/usr/lib/hailo"
+Environment="LD_LIBRARY_PATH=/usr/lib/hailo"
+ExecStart=/bin/bash /home/pi/Project_Snow/scripts/main_launcher.sh
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=project_snow
+
+# Restart logic: Restart only if it dies completely
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

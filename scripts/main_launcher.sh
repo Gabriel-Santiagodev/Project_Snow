@@ -26,9 +26,14 @@ if [ ! -d "venv" ]; then
     exit 1
 fi
 
-# Virtual Environment
-echo "Activating Virtual Environment"
-source venv/bin/activate
+# Virtual Environment Check
+echo "Checking Virtual Environment..."
+PYTHON_BIN="venv/bin/python3"
+
+if [ ! -f "$PYTHON_BIN" ]; then
+    echo "ERROR: Virtual Environment python binary not found at $PYTHON_BIN"
+    exit 1
+fi
 
 # Hailo paths. 
 export HAILO_PATH="/usr/lib/hailo" # TODO: Verify this path on the physical Raspberry Pi
@@ -39,5 +44,6 @@ echo "Hailo environment configured"
 echo "Waiting 5 seconds to initialize the hardware"
 sleep 5
 
-# Run python. NOTE: Once we create main.py, CHECK if this path is right
-python3 src/core/main.py 
+# Run python using the virtual environment explicitly
+echo "Launching main.py..."
+exec $PYTHON_BIN src/core/main.py 
