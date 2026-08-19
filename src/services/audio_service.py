@@ -41,7 +41,7 @@ class AudioService(BaseService):
         while not self._stop_event.is_set():
             try:
                 # 1. Read the immutable flag
-                play_signal = self.shared_state.get_volatile("play_audio_flag")
+                play_signal = self.shared_state.get_volatile("person_detected")
 
                 if play_signal:
                     current_time = time.time()
@@ -62,7 +62,7 @@ class AudioService(BaseService):
                             continue  # <- Skip report_health()
 
                     # 2. Turn off the flag immediately to prevent infinite looping
-                    self.shared_state.set_volatile("play_audio_flag", False)
+                    self.shared_state.set_volatile("person_detected", False)
 
                 # 3. If successful, report health to the Watchdog
                 self.report_health()
