@@ -134,7 +134,6 @@ def main():
             time.sleep(5)
             
     except KeyboardInterrupt:
-        print("\n")
         logger.warning("User interruption detected. Shutting down system...")
         
         if 'service_manager' in locals():

@@ -1,7 +1,6 @@
 {
     "_comment": "Services List - Add your module paths here",
     "services": [
-        "src.services.audio_service.AudioService",
         "src.services.yolo_service.YoloService",
         "src.services.light_service.LightService",
         "src.services.oled_service.OledService",

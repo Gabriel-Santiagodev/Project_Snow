@@ -9,7 +9,7 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi/Project_Snow
 Environment="HAILO_PATH=/usr/lib/hailo"
-Environment="LD_LIBRARY_PATH=/usr/lib/hailo"
+Environment="LD_LIBRARY_PATH=/usr/lib/hailo:%L"
 ExecStart=/bin/bash /home/pi/Project_Snow/scripts/main_launcher.sh
 StandardOutput=syslog
 StandardError=syslog

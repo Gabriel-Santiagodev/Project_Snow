@@ -46,4 +46,4 @@ sleep 5
 
 # Run python using the virtual environment explicitly
 echo "Launching main.py..."
-exec $PYTHON_BIN src/core/main.py 
+exec $PYTHON_BIN -m src.core.main
