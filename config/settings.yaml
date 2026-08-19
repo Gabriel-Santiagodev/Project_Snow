@@ -54,6 +54,11 @@ hardware:
     emergency_light: 17  # BCM numbering (Physical pin 11)
     reset_button: 27     # BCM numbering (Physical pin 13)
     indicator_led: 18    # BCM numbering (Physical pin 12)
+    # OLED Display (I2C — SDA/SCL are fixed hardware pins, not configurable via BCM)
+    # SDA  -> Physical pin 3  (BCM GPIO2)
+    # SCL  -> Physical pin 5  (BCM GPIO3)
+    oled_sda: 2           # BCM numbering (Physical pin 3)  — I2C1 SDA
+    oled_scl: 3           # BCM numbering (Physical pin 5)  — I2C1 SCL
 
 # =============================================================================
 # LIGHT SERVICE VARIABLES
@@ -61,6 +66,15 @@ hardware:
 
   light:
     on_duration_seconds: 5  # Seconds the indicator LED stays on after a detection
+
+# =============================================================================
+# OLED SERVICE VARIABLES
+# =============================================================================
+
+  oled:
+    i2c_port: 1           # I2C bus number (1 = /dev/i2c-1 on Raspberry Pi)
+    i2c_address: 0x3C     # I2C address of the SSD1309 controller (default 0x3C)
+    display_duration_seconds: 5  # Seconds "PERSONA DETECTADA" stays on screen
 
 # =============================================================================
 # SOFTWARE
