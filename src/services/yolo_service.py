@@ -23,9 +23,10 @@ class YoloService(BaseService):
 
                 self.report_health()                                            # We made sure everything went well
 
-                time.sleep(1)                                                   # throttle
+                time.sleep(0.05)                                                   # throttle
             
             except queue.Empty:                                                # Frame queue vacía es normal, no es un errorreal
+                self.report_health()
                 pass
             except Exception as e:
                 self.logger.error(f"Unexpected error in YOLOservice: {e}")
