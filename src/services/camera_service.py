@@ -10,163 +10,169 @@ class cameras_service(BaseService):
     def __init__(self, shared_state, config):
         super().__init__(shared_state, config)
         
-        self.cameras_config = self.config["hardware"]["cameras"]
+        self.cameras_config = self.config.get("hardware", {}).get("cameras", {})
+        self.software_config = self.config.get("software", {}).get("camera_service", {})
 
-        self.resolution_camera_uno = self.cameras_config["camera1"]["resolution"]
-        self.camera_uno = cv2.VideoCapture(self.cameras_config["camera1"]["src"])
-
-        self.resolution_camera_dos = self.cameras_config["camera2"]["resolution"]
-        self.camera_dos = cv2.VideoCapture(self.cameras_config["camera2"]["src"])
+        self.camera_uno = cv2.VideoCapture(self.cameras_config.get("camera1", {}).get("src", 0))
+        self.camera_dos = cv2.VideoCapture(self.cameras_config.get("camera2", {}).get("src", 1))
 
         self.frame_queue = self.shared_state.get_volatile("camera_frame_queue")
         
-        self.previous_frame_uno = None
-        self.previous_frame_dos = None
-        self.previous_zone_a1 = None
-        self.previous_zone_a2 = None
-        self.previous_zone_b1 = None
-        self.previous_zone_b2 = None
-        #self.movement_threshold = self.config["software"]["camera_service"]["movement_threshold"]
-        self.movement_threshold = self.config.get("software", {}).get("camera_service", {}).get("movement_threshold", 5.0)
+        self.movement_threshold = self.software_config.get("movement_threshold", 5.0)
+        self.freeze_timeout = self.software_config.get("freeze_timeout_seconds", 5.0)
+        self.sequence_timeout = self.software_config.get("sequence_timeout_seconds", 10.0)
+        self.debug_mode = self.software_config.get("debug", False)
 
+        # Region of Interest (ROI) for Camera 1 and Camera 2
+        # Fallback to [160, 120, 480, 360] if not defined
+        self.roi_c1 = self.cameras_config.get("camera1", {}).get("zones", {}).get("capture_zone", {}).get("coords", [160, 120, 480, 360])
+        self.roi_c2 = self.cameras_config.get("camera2", {}).get("zones", {}).get("capture_zone", {}).get("coords", [160, 120, 480, 360])
+        
+        # State machine variables
+        # States: 0 = IDLE, 1 = C1_ACTIVE, 2 = WAITING_FOR_C2
+        self.state = 0
+        self.last_state_change = time.time()
+        self.last_c1_movement = 0.0
 
-    
-    
+        # Freeze tracking
+        self.last_c1_frame = None
+        self.last_c2_frame = None
+        self.c1_last_movement_time = time.time()
+        self.c2_last_movement_time = time.time()
+
     def _main_loop(self):
-        self.logger.info("Initializing camera service")
+        self.logger.info("Initializing camera service (Exhibition Sequence Mode)")
+        if self.debug_mode:
+            self.logger.info("DEBUG MODE ENABLED: Visual windows will be shown.")
+
         while not self._stop_event.is_set():
             try:
-                #la logica de camaras de schos :D
                 ret_uno, frame_uno = self.camera_uno.read()
                 ret_dos, frame_dos = self.camera_dos.read()
 
-                camera_uno_ok = ret_uno and frame_uno is not None
-                camera_dos_ok = ret_dos and frame_dos is not None
-
-                if not camera_uno_ok and not camera_dos_ok:
-                    self.logger.error("Both cameras are not working. Vision service inoperative")
+                if not ret_uno and not ret_dos:
+                    self.logger.error("Both cameras failed to read frames.")
                     self.report_error()
                     time.sleep(1)
                     continue
 
-                if not camera_uno_ok:
-                    self.logger.warning("Camera 1 is not working")
+                if not ret_uno:
+                    self.logger.warning("Camera 1 failed to read frame.")
                     self.report_error()
                     time.sleep(1)
                     continue
 
-                if not camera_dos_ok:
-                    self.logger.warning("Camera 2 is not working")
+                if not ret_dos:
+                    self.logger.warning("Camera 2 failed to read frame.")
                     self.report_error()
                     time.sleep(1)
                     continue
 
-                camera_uno_frozen = False
-                camera_dos_frozen = False
+                current_time = time.time()
 
-                gray_uno = cv2.cvtColor(frame_uno, cv2.COLOR_BGR2GRAY)
+                # 1. Evaluate movement in ROIs
+                # Crop ROIs
+                x1_1, y1_1, x2_1, y2_1 = self.roi_c1
+                cropped_c1 = frame_uno[y1_1:y2_1, x1_1:x2_1]
+                gray_c1 = cv2.cvtColor(cropped_c1, cv2.COLOR_BGR2GRAY)
 
-                if self.previous_frame_uno is not None:
-                    diff_uno = cv2.absdiff(gray_uno, self.previous_frame_uno)
-                    if np.mean(diff_uno) < self.movement_threshold:
-                        self.logger.warning("Freeze frame from Camera 1 detected.")
-                        self.report_error()
-                        camera_uno_frozen = True
-                self.previous_frame_uno = gray_uno
+                x1_2, y1_2, x2_2, y2_2 = self.roi_c2
+                cropped_c2 = frame_dos[y1_2:y2_2, x1_2:x2_2]
+                gray_c2 = cv2.cvtColor(cropped_c2, cv2.COLOR_BGR2GRAY)
 
-                gray_dos = cv2.cvtColor(frame_dos, cv2.COLOR_BGR2GRAY)
+                c1_movement = False
+                c2_movement = False
 
-                if self.previous_frame_dos is not None:
-                    diff_dos = cv2.absdiff(gray_dos, self.previous_frame_dos)
-                    if np.mean(diff_dos) < self.movement_threshold:
-                        self.logger.warning("Freeze frame from Camera 2 detected.")
-                        self.report_error()
-                        camera_dos_frozen = True
-                self.previous_frame_dos = gray_dos
+                if self.last_c1_frame is not None:
+                    diff_c1 = cv2.absdiff(gray_c1, self.last_c1_frame)
+                    if np.mean(diff_c1) > self.movement_threshold:
+                        c1_movement = True
+                        self.c1_last_movement_time = current_time
 
-                if camera_uno_frozen and camera_dos_frozen:
-                    time.sleep(1)
-                    continue
+                if self.last_c2_frame is not None:
+                    diff_c2 = cv2.absdiff(gray_c2, self.last_c2_frame)
+                    if np.mean(diff_c2) > self.movement_threshold:
+                        c2_movement = True
+                        self.c2_last_movement_time = current_time
 
-                if not camera_uno_frozen:
-                    zonea1_data = self.cameras_config["camera1"]["zones"]["zone_a1"]
-                    x_min_a1, y_min_a1, x_max_a1, y_max_a1 = zonea1_data["coords"]
+                self.last_c1_frame = gray_c1
+                self.last_c2_frame = gray_c2
 
-                    cropped_a1 = frame_uno[y_min_a1:y_max_a1, x_min_a1:x_max_a1]
-
-                    gray_cropped_a1 = cv2.cvtColor(cropped_a1, cv2.COLOR_BGR2GRAY)
-
-                    if self.previous_zone_a1 is not None:
-                        diff_a1 = cv2.absdiff(gray_cropped_a1, self.previous_zone_a1)
-
-                        if np.mean(diff_a1) > self.movement_threshold:
-
-                            if self.frame_queue.full():
-                                try:
-                                    self.frame_queue.get_nowait()
-                                except queue.Empty:
-                                    pass
-
-                            self.frame_queue.put_nowait({
-                                "camera_id":"camera1",
-                                "zone":"zone_a1",
-                                "timestamp": time.time(),
-                                "frame": cropped_a1,
-                            })
-
-                    self.previous_zone_a1 = gray_cropped_a1
-
-                    zonea2_data = self.cameras_config["camera1"]["zones"]["zone_a2"]
-                    x_min_a2, y_min_a2, x_max_a2, y_max_a2 = zonea2_data["coords"]
-
-                    cropped_a2 = frame_uno[y_min_a2:y_max_a2, x_min_a2:x_max_a2]
-
-                    gray_cropped_a2 = cv2.cvtColor(cropped_a2, cv2.COLOR_BGR2GRAY)
-
-                    if self.previous_zone_a2 is not None:
-                        diff_a2 = cv2.absdiff(gray_cropped_a2, self.previous_zone_a2)
-
-                        if np.mean(diff_a2) > self.movement_threshold:
-                            self.logger.info("Movement in Camera 1 zone a2")
-                    
-                    self.previous_zone_a2 = gray_cropped_a2
-
-                    
-
-                if not camera_dos_frozen:
-                    zoneb1_data =  self.cameras_config["camera2"]["zones"]["zone_b1"]
-                    x_min_b1, y_min_b1, x_max_b1, y_max_b1 = zoneb1_data["coords"]
-
-                    cropped_b1 = frame_dos[y_min_b1:y_max_b1, x_min_b1:x_max_b1]
-
-                    gray_cropped_b1 = cv2.cvtColor(cropped_b1, cv2.COLOR_BGR2GRAY)
-
-                    if self.previous_zone_b1 is not None:
-                        diff_b1 = cv2.absdiff(gray_cropped_b1, self.previous_zone_b1)
-
-                        if np.mean(diff_b1) > self.movement_threshold:
-                            self.logger.info("Movement detected in Camera 2 zone b1")
-                    
-                    self.previous_zone_b1 = gray_cropped_b1
-
-                    zoneb2_data =  self.cameras_config["camera2"]["zones"]["zone_b2"]
-                    x_min_b2, y_min_b2, x_max_b2, y_max_b2 = zoneb2_data["coords"]
-
-                    cropped_b2 = frame_dos[y_min_b2:y_max_b2, x_min_b2:x_max_b2]
-
-                    gray_cropped_b2 = cv2.cvtColor(cropped_b2, cv2.COLOR_BGR2GRAY)
-
-                    if self.previous_zone_b2 is not None:
-                        diff_b2 = cv2.absdiff(gray_cropped_b2, self.previous_zone_b2)
-
-                        if np.mean(diff_b2) > self.movement_threshold:
-                            self.logger.info("Movement detected in Camera 2 zone b2")
-
-                    self.previous_zone_b2 = gray_cropped_b2
-                    
-                    
-
+                # 2. Freeze detection (Watchdog trigger)
+                c1_frozen = (current_time - self.c1_last_movement_time) > self.freeze_timeout
+                c2_frozen = (current_time - self.c2_last_movement_time) > self.freeze_timeout
                 
+                # In exhibition mode, a frozen camera is normal if nobody passes for a while.
+                # Only log it at debug level to avoid Watchdog resets if the hallway is just empty.
+                if c1_frozen or c2_frozen:
+                    pass # We intentionally don't report_error() for freeze to prevent false positives
+
+                # 3. State Machine Logic
+                # STATE 0: IDLE
+                if self.state == 0:
+                    if c1_movement:
+                        self.logger.info("Sequence Triggered: Person detected in Camera 1 ROI. State -> 1")
+                        self.state = 1
+                        self.last_state_change = current_time
+                        self.last_c1_movement = current_time
+
+                # STATE 1: C1_ACTIVE
+                elif self.state == 1:
+                    if c1_movement:
+                        self.last_c1_movement = current_time
+                    
+                    # If person has left C1 for more than 1 second
+                    if (current_time - self.last_c1_movement) > 1.0:
+                        self.logger.info("Sequence Progress: Person left Camera 1. State -> 2")
+                        self.state = 2
+                        self.last_state_change = current_time
+                        
+                    # Timeout guard
+                    elif (current_time - self.last_state_change) > self.sequence_timeout:
+                        self.logger.warning("Sequence Timeout: Person stayed in C1 too long. State -> 0")
+                        self.state = 0
+
+                # STATE 2: WAITING_FOR_C2
+                elif self.state == 2:
+                    if c2_movement:
+                        self.logger.info("Sequence Complete! Person detected in Camera 2 ROI. Sending frame to YOLO.")
+                        
+                        # Trigger YOLO queue
+                        if self.frame_queue.full():
+                            try:
+                                self.frame_queue.get_nowait()
+                            except queue.Empty:
+                                pass
+                        
+                        # Send RAW FULL FRAME to YOLO (not cropped, to give YOLO maximum context)
+                        self.frame_queue.put_nowait(frame_dos)
+                        
+                        # Reset State Machine
+                        self.state = 0
+                        self.last_state_change = current_time
+                    
+                    # Timeout guard
+                    elif (current_time - self.last_state_change) > self.sequence_timeout:
+                        self.logger.warning("Sequence Timeout: Person never reached C2. State -> 0")
+                        self.state = 0
+
+                # 4. Debug Mode UI
+                if self.debug_mode:
+                    display_c1 = frame_uno.copy()
+                    display_c2 = frame_dos.copy()
+
+                    # Draw ROIs
+                    cv2.rectangle(display_c1, (x1_1, y1_1), (x2_1, y2_1), (0, 255, 0) if c1_movement else (0, 0, 255), 2)
+                    cv2.rectangle(display_c2, (x1_2, y1_2), (x2_2, y2_2), (0, 255, 0) if c2_movement else (0, 0, 255), 2)
+
+                    # Add text
+                    cv2.putText(display_c1, f"State: {self.state}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+                    cv2.putText(display_c2, "Target: Camera 2 ROI", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+                    cv2.imshow("Camera 1 Debug", display_c1)
+                    cv2.imshow("Camera 2 Debug", display_c2)
+                    cv2.waitKey(1)
+
                 self.report_health()
                 time.sleep(0.03)
 
@@ -177,3 +183,9 @@ class cameras_service(BaseService):
                 self.logger.error(f"Unexpected error capturing frames: {e}")
                 self.report_error()
                 time.sleep(1)
+        
+        # Shutdown
+        if self.debug_mode:
+            cv2.destroyAllWindows()
+        self.camera_uno.release()
+        self.camera_dos.release()

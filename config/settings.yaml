@@ -29,20 +29,16 @@ hardware:
       resolution: [640, 480]
       enabled: true
       zones:
-        zone_a1:
-          coords: [0, 0, 320, 480]      # x_min, y_min, x_max, y_max
-        zone_a2:
-          coords: [320, 0, 640, 480]
+        capture_zone:
+          coords: [160, 120, 480, 360]  # x_min, y_min, x_max, y_max (Center ROI)
     camera2:
       src: 1
       name: "Right Camera"
       resolution: [640, 480]
       enabled: true
       zones:
-        zone_b1:
-          coords: [0, 0, 320, 480]      # x_min, y_min, x_max, y_max
-        zone_b2:
-          coords: [320, 0, 640, 480]
+        capture_zone:
+          coords: [160, 120, 480, 360]  # x_min, y_min, x_max, y_max (Center ROI)
 
 # =============================================================================
 # AUDIO VARIABLES
@@ -106,7 +102,10 @@ software:
     obstruction_threshold: 5000 # Pixel change for obstruction
 
   camera_service:
-    movement_threshold: 5 #Pixel change for freeze detection
+    movement_threshold: 5.0 # Pixel change for movement detection
+    freeze_timeout_seconds: 5.0 # Seconds before declaring camera frozen
+    sequence_timeout_seconds: 10.0 # Time to complete C1 -> C2 sequence
+    debug: false # Set to true to show camera windows with ROIs
     
 
 # =============================================================================
