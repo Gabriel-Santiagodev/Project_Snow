@@ -29,20 +29,16 @@ hardware:
       resolution: [640, 480]
       enabled: true
       zones:
-        zone_a1:
-          coords: [0, 0, 320, 480]      # x_min, y_min, x_max, y_max
-        zone_a2:
-          coords: [320, 0, 640, 480]
+        capture_zone:
+          coords: [160, 120, 480, 360]  # x_min, y_min, x_max, y_max (Center ROI)
     camera2:
       src: 1
       name: "Right Camera"
       resolution: [640, 480]
       enabled: true
       zones:
-        zone_b1:
-          coords: [0, 0, 320, 480]      # x_min, y_min, x_max, y_max
-        zone_b2:
-          coords: [320, 0, 640, 480]
+        capture_zone:
+          coords: [160, 120, 480, 360]  # x_min, y_min, x_max, y_max (Center ROI)
 
 # =============================================================================
 # AUDIO VARIABLES
@@ -50,6 +46,7 @@ hardware:
 
   audio:
     volume: 0.8
+    cooldown_seconds: 2.0
     audio_files:
       testing_audio0_path: "data/audio/testing_audio0.mp3"
       testing_audio1_path: "data/audio/testing_audio1.mp3"
@@ -59,9 +56,27 @@ hardware:
 # GPIO PINS VARIABLES (BCM Numbering)
 # =============================================================================
   pins:
-    # Future task: Verify buttons are 3.3V compatible before connecting to GPIO
-    emergency_light: 17 # BCM numbering (Physical pin 11)
-    reset_button: 27 # BCM numbering (Physical pin 13)
+    emergency_light: 17  # BCM numbering (Physical pin 11)
+    reset_button: 27     # BCM numbering (Physical pin 13)
+    indicator_led: 18    # BCM numbering (Physical pin 12)
+    oled_sda: 2           # BCM numbering (Physical pin 3)  — I2C1 SDA
+    oled_scl: 3           # BCM numbering (Physical pin 5)  — I2C1 SCL
+
+# =============================================================================
+# LIGHT SERVICE VARIABLES
+# =============================================================================
+
+  light:
+    on_duration_seconds: 5  # Seconds the indicator LED stays on after a detection
+
+# =============================================================================
+# OLED SERVICE VARIABLES
+# =============================================================================
+
+  oled:
+    i2c_port: 1           # I2C bus number (1 = /dev/i2c-1 on Raspberry Pi)
+    i2c_address: 0x3C     # I2C address of the SSD1309 controller (default 0x3C)
+    display_duration_seconds: 5  # Seconds "PERSONA DETECTADA" stays on screen
 
 # =============================================================================
 # SOFTWARE
@@ -83,7 +98,10 @@ software:
     obstruction_threshold: 5000 # Pixel change for obstruction
 
   camera_service:
-    movement_threshold: 5 #Pixel change for freeze detection
+    movement_threshold: 5.0 # Pixel change for movement detection
+    freeze_timeout_seconds: 5.0 # Seconds before declaring camera frozen
+    sequence_timeout_seconds: 10.0 # Time to complete C1 -> C2 sequence
+    debug: false # Set to true to show camera windows with ROIs
     
 
 # =============================================================================
