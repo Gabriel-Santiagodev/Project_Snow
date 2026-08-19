@@ -50,8 +50,16 @@ hardware:
 # =============================================================================
   pins:
     # Future task: Verify buttons are 3.3V compatible before connecting to GPIO
-    emergency_light: 17 # BCM numbering (Physical pin 11)
-    reset_button: 27 # BCM numbering (Physical pin 13)
+    emergency_light: 17  # BCM numbering (Physical pin 11)
+    reset_button: 27     # BCM numbering (Physical pin 13)
+    indicator_led: 18    # BCM numbering (Physical pin 12) - LED indicador de deteccion
+
+# =============================================================================
+# LIGHT SERVICE VARIABLES
+# =============================================================================
+
+  light:
+    on_duration_seconds: 5  # Seconds the indicator LED stays on after a detection
 
 # =============================================================================
 # SOFTWARE
