@@ -40,6 +40,7 @@ hardware:
 
   audio:
     volume: 0.8
+    cooldown_seconds: 2.0
     audio_files:
       testing_audio0_path: "data/audio/testing_audio0.mp3"
       testing_audio1_path: "data/audio/testing_audio1.mp3"
