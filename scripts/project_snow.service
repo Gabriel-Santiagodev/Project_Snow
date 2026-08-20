@@ -6,11 +6,11 @@ StartLimitBurst=5
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/Desktop/Project_Snow
+User=snow
+WorkingDirectory=/home/snow/Desktop/Project_Snow
 Environment="HAILO_PATH=/usr/lib/hailo"
 Environment="LD_LIBRARY_PATH=/usr/lib/hailo:%L"
-ExecStart=/bin/bash /home/pi/Desktop/Project_Snow/scripts/main_launcher.sh
+ExecStart=/bin/bash /home/snow/Desktop/Project_Snow/scripts/main_launcher.sh
 StandardOutput=syslog
 StandardError=syslog
 SyslogIdentifier=project_snow
