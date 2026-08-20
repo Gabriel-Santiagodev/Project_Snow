@@ -1,3 +1,9 @@
+# ML Dependencies (CPU-only PyTorch for Raspberry Pi)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+torchvision
+torchaudio
+
 # Core Dependencies
 ultralytics>=8.0.0
 opencv-python>=4.8.0
