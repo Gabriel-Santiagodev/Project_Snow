@@ -52,8 +52,8 @@ def check_maintenance_mode(config: dict, logger: logging.Logger, shared_state: S
         pin_button = config['hardware']['pins']['reset_button']
         
         if LED and Button:
-            emergency_light = LED(pin_led)
-            reset_button = Button(pin_button)
+            emergency_light = LED(pin_led, initial_value=False)
+            reset_button = Button(pin_button, pull_up=False)
             emergency_light.on()
         else:
             emergency_light = None

@@ -53,7 +53,7 @@ class LightService(BaseService):
         # 2. Hardware initialization
         if LED is not None:
             try:
-                self._led = LED(self._pin)
+                self._led = LED(self._pin, initial_value=False)
                 self.logger.info(
                     f"LED indicator initialized on BCM pin {self._pin}."
                 )
