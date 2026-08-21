@@ -79,40 +79,30 @@ class LightService(BaseService):
 
         Lifecycle
         ---------
-        1. Poll `person_detected` flag at 10 Hz.
-        2. On True  -> turn LED on -> wait on_duration_seconds (interruptible)
-                    -> turn LED off -> reset flag to False.
-        3. Report health or error to the Watchdog on each iteration.
+        1. Poll `last_person_detected_time` from SharedState at 10 Hz.
+        2. If current time is within `on_duration_seconds` of last detection, LED stays ON.
+        3. If time expires, LED goes OFF.
+        4. Report health or error to the Watchdog on each iteration.
         """
         self.logger.info("Starting light service main loop...")
 
+        is_on = False
+
         while not self._stop_event.is_set():
             try:
-                # 1. Read the volatile flag from SharedState
-                person_detected = self.shared_state.get_volatile("person_detected")
+                # 1. Read the detection timestamp from SharedState
+                last_detection_time = self.shared_state.get_volatile("last_person_detected_time")
 
-                if person_detected:
-                    self.logger.info(
-                        "person_detected flag is True. Activating LED indicator."
-                    )
-
-                    # 2a. Turn LED on
-                    self._turn_led_on()
-
-                    # 2b. Wait for the configured duration.
-                    #     Using _stop_event.wait() instead of time.sleep() allows
-                    #     the loop to exit immediately if stop() is called mid-wait,
-                    #     fulfilling the Graceful Exit requirement.
-                    self._stop_event.wait(timeout=self._on_duration)
-
-                    # 2c. Turn LED off
-                    self._turn_led_off()
-
-                    # 2d. Reset the flag so the detection cycle can repeat
-                    self.shared_state.set_volatile("person_detected", False)
-                    self.logger.info(
-                        "LED deactivated. person_detected flag reset to False."
-                    )
+                if last_detection_time > 0 and (time.time() - last_detection_time) <= self._on_duration:
+                    if not is_on:
+                        self.logger.info("Detection active. Activating LED indicator.")
+                        self._turn_led_on()
+                        is_on = True
+                else:
+                    if is_on:
+                        self.logger.info("Detection expired. LED deactivated.")
+                        self._turn_led_off()
+                        is_on = False
 
                 # 3. Report healthy iteration to the Watchdog
                 self.report_health()

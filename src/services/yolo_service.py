@@ -20,6 +20,7 @@ class YoloService(BaseService):
 
                 if detected:
                     self.shared_state.set_volatile("person_detected", True)
+                    self.shared_state.set_volatile("last_person_detected_time", time.time())
 
                 self.report_health()                                            # We made sure everything went well
 

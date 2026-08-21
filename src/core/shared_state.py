@@ -65,7 +65,8 @@ class SharedState:
             "voltage": 0.0,
             "cpu_temp": 0.0,
             "camera_frame_queue": queue.Queue(maxsize=1),
-            "person_detected": False 
+            "person_detected": False,
+            "last_person_detected_time": 0.0
         }
 
     def _load_from_disk(self):

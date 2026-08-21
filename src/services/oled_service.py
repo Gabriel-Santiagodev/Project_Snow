@@ -97,42 +97,30 @@ class OledService(BaseService):
 
         Lifecycle
         ---------
-        1. Poll `person_detected` flag at 10 Hz.
-        2. On True  -> draw "PERSONA DETECTADA"
-                    -> wait display_duration_seconds (interruptible)
-                    -> draw "SNOW"
-                    -> reset flag to False.
-        3. Report health or error to the Watchdog on each iteration.
+        1. Poll `last_person_detected_time` from SharedState at 10 Hz.
+        2. If current time is within `display_duration_seconds` of last detection, show alert.
+        3. If time expires, show idle message.
+        4. Report health or error to the Watchdog on each iteration.
         """
         self.logger.info("Starting OLED service main loop...")
+        
+        is_on = False
 
         while not self._stop_event.is_set():
             try:
-                # 1. Read the volatile flag from SharedState
-                person_detected = self.shared_state.get_volatile("person_detected")
+                # 1. Read the detection timestamp from SharedState
+                last_detection_time = self.shared_state.get_volatile("last_person_detected_time")
 
-                if person_detected:
-                    self.logger.info(
-                        "person_detected flag is True. Updating OLED display."
-                    )
-
-                    # 2a. Show alert message
-                    self._draw_message(self._MSG_DETECTED)
-
-                    # 2b. Wait for the configured duration.
-                    #     Using _stop_event.wait() instead of time.sleep() allows
-                    #     the loop to exit immediately if stop() is called mid-wait,
-                    #     fulfilling the Graceful Exit requirement.
-                    self._stop_event.wait(timeout=self._display_duration)
-
-                    # 2c. Return to idle message
-                    self._draw_message(self._MSG_IDLE)
-
-                    # 2d. Reset the flag so the detection cycle can repeat
-                    self.shared_state.set_volatile("person_detected", False)
-                    self.logger.info(
-                        "Display returned to idle. person_detected flag reset to False."
-                    )
+                if last_detection_time > 0 and (time.time() - last_detection_time) <= self._display_duration:
+                    if not is_on:
+                        self.logger.info("Detection active. Updating OLED display.")
+                        self._draw_message(self._MSG_DETECTED)
+                        is_on = True
+                else:
+                    if is_on:
+                        self.logger.info("Detection expired. Display returned to idle.")
+                        self._draw_message(self._MSG_IDLE)
+                        is_on = False
 
                 # 3. Report healthy iteration to the Watchdog
                 self.report_health()

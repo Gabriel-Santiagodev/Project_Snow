@@ -187,7 +187,7 @@ class cameras_service(BaseService):
                     cv2.waitKey(1)
 
                 self.report_health()
-                time.sleep(0.03)
+                # Artificial delay removed to sync precisely with RTSP blocking read()
 
             except queue.Full:
                 self.logger.warning("Frame queue is full, dropping this cycle's frames.")
