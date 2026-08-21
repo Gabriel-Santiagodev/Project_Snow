@@ -22,6 +22,14 @@ class cameras_service(BaseService):
         self.freeze_timeout = self.software_config.get("freeze_timeout_seconds", 5.0)
         self.sequence_timeout = self.software_config.get("sequence_timeout_seconds", 10.0)
         self.debug_mode = self.software_config.get("debug", False)
+        self.debug_win_w = self.software_config.get("debug_window_width", 640)
+        self.debug_win_h = self.software_config.get("debug_window_height", 480)
+
+        # Minimize RTSP internal buffer to 1 frame to prevent accumulated lag.
+        # Without this, OpenCV buffers several seconds of frames and the feed
+        # appears frozen or heavily delayed during heavy processing.
+        self.camera_uno.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        self.camera_dos.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         # Region of Interest (ROI) for Camera 1 and Camera 2
         # Fallback to [160, 120, 480, 360] if not defined
@@ -168,6 +176,11 @@ class cameras_service(BaseService):
                     # Add text
                     cv2.putText(display_c1, f"State: {self.state}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
                     cv2.putText(display_c2, "Target: Camera 2 ROI", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+                    # Resize to configured dimensions before displaying to avoid
+                    # full-screen windows when the camera stream resolution is large.
+                    display_c1 = cv2.resize(display_c1, (self.debug_win_w, self.debug_win_h))
+                    display_c2 = cv2.resize(display_c2, (self.debug_win_w, self.debug_win_h))
 
                     cv2.imshow("Camera 1 Debug", display_c1)
                     cv2.imshow("Camera 2 Debug", display_c2)

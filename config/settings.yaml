@@ -24,7 +24,7 @@ hardware:
 # =============================================================================
   cameras:
     camera1: 
-      src: "rtsp://admin:snow2026@192.168.1.65:554/Streaming/Channels/101"
+      src: "rtsp://admin:snow2026@192.168.1.65:554/Streaming/Channels/102"
       name: "Left Camera"
       resolution: [640, 480]
       enabled: true
@@ -32,7 +32,7 @@ hardware:
         capture_zone:
           coords: [160, 120, 480, 360]  # x_min, y_min, x_max, y_max (Center ROI)
     camera2:
-      src: "rtsp://admin:snow2026@192.168.1.66:554/Streaming/Channels/101"
+      src: "rtsp://admin:snow2026@192.168.1.66:554/Streaming/Channels/102"
       name: "Right Camera"
       resolution: [640, 480]
       enabled: true
@@ -106,6 +106,8 @@ software:
     freeze_timeout_seconds: 5.0 # Seconds before declaring camera frozen
     sequence_timeout_seconds: 10.0 # Time to complete C1 -> C2 sequence
     debug: true # Set to true to show camera windows with ROIs
+    debug_window_width: 640  # Width of each debug window in pixels
+    debug_window_height: 480 # Height of each debug window in pixels
     
 
 # =============================================================================
