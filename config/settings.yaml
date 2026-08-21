@@ -105,7 +105,7 @@ software:
     movement_threshold: 5.0 # Pixel change for movement detection
     freeze_timeout_seconds: 5.0 # Seconds before declaring camera frozen
     sequence_timeout_seconds: 10.0 # Time to complete C1 -> C2 sequence
-    debug: true # Set to true to show camera windows with ROIs
+    debug: false # Set to true to show camera windows with ROIs
     debug_window_width: 640  # Width of each debug window in pixels
     debug_window_height: 480 # Height of each debug window in pixels
     
