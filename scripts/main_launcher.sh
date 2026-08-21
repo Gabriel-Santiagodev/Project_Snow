@@ -40,6 +40,14 @@ export HAILO_PATH="/usr/lib/hailo" # TODO: Verify this path on the physical Rasp
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HAILO_PATH
 echo "Hailo environment configured"
 
+# Force OpenCV to use the X11 (xcb) backend instead of searching for Wayland,
+# which is not available inside the virtual environment's Qt plugins directory.
+export QT_QPA_PLATFORM=xcb
+
+# Force RTSP transport over TCP instead of UDP to improve stream stability and
+# reduce reference-frame loss that triggers HEVC/H.265 decoder RPS errors.
+export OPENCV_FFMPEG_CAPTURE_OPTIONS="rtsp_transport;tcp"
+
 # Waiting 5 seconds to initialize the hardware (cameras, sensors, etc.)
 echo "Waiting 5 seconds to initialize the hardware"
 sleep 5
