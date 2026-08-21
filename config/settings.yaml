@@ -94,7 +94,7 @@ software:
   ai_model:
     model_path: "data/models/best.pt"
     type: "yolov8"
-    confidence_threshold: 0.85 # Once 0.85 is reached or over come, the detection is True
+    confidence_threshold: 0.60 # Once 0.85 is reached or over come, the detection is True
     hailo:
       enabled: true
   
